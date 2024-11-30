@@ -71,7 +71,7 @@ The motivation stems from:
 /main
   ├── main.py          # Main backend logic
   ├── database.py      # Database interactions and CRUD operations
-  ├── database.py      # Frontend GUI
+  ├── gui.py           # Frontend GUI
 /db
   └── inventory.db     # SQLite database file
 /docs
@@ -79,7 +79,7 @@ The motivation stems from:
   ├── project_report.pdf # Project report
 ```
 
-Installation and Usage
+**Installation and Usage**
 Prerequisites
 
     Python 3.x installed on your system.
