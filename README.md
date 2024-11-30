@@ -79,7 +79,7 @@ The motivation stems from:
   ├── project_report.pdf # Project report
 ```
 
-**Installation and Usage**
+## **Installation and Usage**
 Prerequisites
 
     Python 3.x installed on your system.
@@ -87,10 +87,9 @@ Prerequisites
 
 Setup Instructions
 
-    Clone this repository:
-
-git clone [https://github.com/cediegreyhat/Project-LMS/.git](https://github.com/cediegreyhat/Project-LMS)
+   Clone this repository:
 ```
+git clone [https://github.com/cediegreyhat/Project-LMS/.git](https://github.com/cediegreyhat/Project-LMS)
 cd Project-LMS
 ```
 Install required Python libraries:
@@ -102,13 +101,13 @@ Run the project:
 
     python3 main/main.py
 
-**Technology Stack**
+## **Technology Stack**
 
     Backend: Python (SQLite for database management)
     Database: SQLite (file-based)
     Future Plans for Frontend: Tkinter or PyQt for GUI
 
-**Future Enhancements**
+## **Future Enhancements**
 
     QR/Barcode Integration:
         Use QR codes for easy tool tracking and transactions.
@@ -119,7 +118,7 @@ Run the project:
     Enhanced GUI:
         Create a visually appealing interface with Tkinter or PyQT
 
-**Contributors**
+## **Contributors**
 Team Members:
 
     Lhord Cedrick T. Delos Santos (Team Leader): Backend Development, Database Integration
