@@ -71,6 +71,7 @@ The motivation stems from:
 /main
   ├── main.py          # Main backend logic
   ├── database.py      # Database interactions and CRUD operations
+  ├── database.py      # Frontend GUI
 /db
   └── inventory.db     # SQLite database file
 /docs
@@ -88,7 +89,7 @@ Setup Instructions
 
     Clone this repository:
 
-git clone [https://github.com/your-username/tool-management-system.git](https://github.com/cediegreyhat/Project-LMS)
+git clone [https://github.com/cediegreyhat/Project-LMS/.git](https://github.com/cediegreyhat/Project-LMS)
 ```
 cd Project-LMS
 ```
@@ -101,13 +102,13 @@ Run the project:
 
     python3 main/main.py
 
-Technology Stack
+**Technology Stack**
 
     Backend: Python (SQLite for database management)
     Database: SQLite (file-based)
     Future Plans for Frontend: Tkinter or PyQt for GUI
 
-Future Enhancements
+**Future Enhancements**
 
     QR/Barcode Integration:
         Use QR codes for easy tool tracking and transactions.
