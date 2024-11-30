@@ -1,17 +1,23 @@
 #Backend to mga Idol!
 from database import DatabaseManager
+from colorama import Fore, Style
 
 def main_menu():
+    menu_options = [
+        "1. Add Tool",
+        "2. View All Tools",
+        "3. Update Tool",
+        "4. Delete Tool",
+        "5. Borrow Tool",
+        "6. Return Tool",
+        "7. Search Tools",
+        "8. Clear All Data (Admin Only)",
+        "9. Exit"
+    ]
     print("\n=== Tool Management System ===")
-    print("1. Add Tool")
-    print("2. View All Tools")
-    print("3. Update Tool")
-    print("4. Delete Tool")
-    print("5. Borrow Tool")
-    print("6. Return Tool")
-    print("7. Search Tools")
-    print("8. Clear All Data (Admin Only)")
-    print("9. Exit")
+    for option in menu_options:
+        print(option)
+
 
 def get_valid_int(prompt, allow_blank=False):
     while True:
@@ -30,14 +36,21 @@ def get_valid_str(prompt, allow_blank=False):
         print("Invalid input. Please enter a non-empty string.")
 
 def handle_add_tool(db):
-    name = get_valid_str("Enter tool name: ")
-    category = get_valid_str("Enter tool category: ")
-    condition = get_valid_str("Enter tool condition (Good/Fair/Poor): ").capitalize()
-    while condition not in ["Good", "Fair", "Poor"]:
-        print("Invalid condition. Please enter 'Good', 'Fair', or 'Poor'.")
+    try:
+        name = get_valid_str("Enter tool name: ")
+        category = get_valid_str("Enter tool category: ")
         condition = get_valid_str("Enter tool condition (Good/Fair/Poor): ").capitalize()
-    quantity = get_valid_int("Enter quantity: ")
-    location = get_valid_str("Enter location: ")
+        while condition not in ["Good", "Fair", "Poor"]:
+            print("Invalid condition. Please enter 'Good', 'Fair', or 'Poor'.")
+            condition = get_valid_str("Enter tool condition (Good/Fair/Poor): ").capitalize()
+        quantity = get_valid_int("Enter quantity: ")
+        location = get_valid_str("Enter location: ")
+        db.add_tool(name, category, condition, quantity, location)
+        print(Fore.GREEN + f"Tool '{name}' added successfully!" + Style.RESET_ALL)
+    except ValueError as e:
+        print(Fore.RED + str(e) + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.RED + f"An unexpected error occurred: {e}" + Style.RESET_ALL)
     db.add_tool(name, category, condition, quantity, location)
 
 def handle_view_tools(db):
@@ -51,15 +64,16 @@ def handle_view_tools(db):
 def handle_update_tool(db):
     tool_id = get_valid_int("Enter the Tool ID to update: ")
     print("Leave fields blank to skip updating them.")
-    name = get_valid_str("New tool name: ", allow_blank=True)
-    category = get_valid_str("New tool category: ", allow_blank=True)
-    condition = get_valid_str("New tool condition (Good/Fair/Poor): ", allow_blank=True).capitalize()
-    if condition and condition not in ["Good", "Fair", "Poor"]:
-        print("Invalid condition. Skipping update.")
-        condition = None
-    quantity = get_valid_int("New quantity: ", allow_blank=True)
-    location = get_valid_str("New location: ", allow_blank=True)
-    db.update_tool(tool_id, name, category, condition, quantity, location)
+    updates = {
+        "name": get_valid_str("New tool name: ", allow_blank=True),
+        "category": get_valid_str("New tool category: ", allow_blank=True),
+        "condition": get_valid_str("New tool condition (Good/Fair/Poor): ", allow_blank=True).capitalize(),
+        "quantity": get_valid_int("New quantity: ", allow_blank=True),
+        "location": get_valid_str("New location: ", allow_blank=True)
+    }
+    # Remove invalid updates
+    updates = {k: v for k, v in updates.items() if v}
+    db.update_tool(tool_id, **updates)
 
 def handle_delete_tool(db):
     tool_id = get_valid_int("Enter the Tool ID to delete: ")
@@ -81,8 +95,10 @@ def handle_search_tools(db):
     if not results:
         print("No tools found matching the search criteria.")
     else:
+        print("\nSearch Results:")
+        print("ID\tName\tCategory\tCondition\tQuantity\tLocation")
         for tool in results:
-            print(f"Tool ID: {tool[0]}, Name: {tool[1]}, Category: {tool[2]}, Condition: {tool[3]}, Quantity: {tool[4]}, Location: {tool[5]}")
+            print(f"{tool[0]}\t{tool[1]}\t{tool[2]}\t{tool[3]}\t{tool[4]}\t{tool[5]}")
 
 def handle_clear_data(db):
     confirmation = input("Are you sure you want to clear all data? Type 'YES' to confirm: ")
