@@ -5,6 +5,7 @@ from datetime import datetime
 
 class DatabaseManager:
     def __init__(self, db_name="db/inventory.db"):
+        
         self.db_name = db_name
         self._initialize_database()
 
