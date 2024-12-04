@@ -3,9 +3,8 @@ from contextlib import closing
 from datetime import datetime
 
 
-class DatabaseManager: 
+class DatabaseManager:
     def __init__(self, db_name="inventory.db"):
-        
         self.db_name = db_name
         self._initialize_database()
 
