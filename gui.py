@@ -1,152 +1,139 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-from database import DatabaseManager
+from tkinter import messagebox
+from database_manager import DatabaseManager
+
+
+class LoginApp:
+    def __init__(self):
+        self.db = DatabaseManager()
+        self.db.init_user_database()  # Initialize the user database
+        self.create_login_window()
+
+    def create_login_window(self):
+        self.login_window = tk.Tk()
+        self.login_window.geometry('1920x1080')
+        self.login_window.title('Login to Alpax Application')
+
+        font_large = ('Arial', 24)
+        font_medium = ('Arial', 20)
+
+        tk.Label(self.login_window, text='Username', font=font_large).pack(pady=20)
+        self.username_entry = tk.Entry(self.login_window, font=font_medium, width=30)
+        self.username_entry.pack(pady=10)
+
+        tk.Label(self.login_window, text='Password', font=font_large).pack(pady=20)
+        self.password_entry = tk.Entry(self.login_window, show='*', font=font_medium, width=30)
+        self.password_entry.pack(pady=10)
+
+        self.login_button = tk.Button(self.login_window, text='Login', font=font_large, command=self.login, width=15)
+        self.login_button.pack(pady=20)
+
+        self.signup_button = tk.Button(self.login_window, text='Sign Up', font=font_large, command=self.open_signup_window, width=15)
+        self.signup_button.pack(pady=10)
+
+        self.login_window.mainloop()
+
+    def login(self):
+        username = self.username_entry.get()
+        password = self.password_entry.get()
+        user = self.db.get_user(username, password)
+
+        if user:
+            self.login_window.destroy()
+            ToolManagementApp(user, self.db)  # Pass the db instance to ToolManagementApp
+        else:
+            messagebox.showerror('Login Failed', 'Incorrect username or password.')
+
+    def open_signup_window(self):
+        self.login_window.destroy()
+        self.signup_window = tk.Tk()
+        self.signup_window.geometry('1920x1080')
+        self.signup_window.title('Sign Up to Alpax Application')
+
+        font_large = ('Arial', 24)
+        font_medium = ('Arial', 20)
+
+        tk.Label(self.signup_window, text='Username', font=font_large).pack(pady=20)
+        self.signup_username_entry = tk.Entry(self.signup_window, font=font_medium, width=30)
+        self.signup_username_entry.pack(pady=10)
+
+        tk.Label(self.signup_window, text='Password', font=font_large).pack(pady=20)
+        self.signup_password_entry = tk.Entry(self.signup_window, show='*', font=font_medium, width=30)
+        self.signup_password_entry.pack(pady=10)
+
+        tk.Label(self.signup_window, text='Name', font=font_large).pack(pady=20)
+        self.signup_name_entry = tk.Entry(self.signup_window, font=font_medium, width=30)
+        self.signup_name_entry.pack(pady=10)
+
+        tk.Label(self.signup_window, text='Age', font=font_large).pack(pady=20)
+        self.signup_age_entry = tk.Entry(self.signup_window, font=font_medium, width=30)
+        self.signup_age_entry.pack(pady=10)
+
+        tk.Label(self.signup_window, text='Email', font=font_large).pack(pady=20)
+        self.signup_email_entry = tk.Entry(self.signup_window, font=font_medium, width=30)
+        self.signup_email_entry.pack(pady=10)
+
+        self.signup_button = tk.Button(self.signup_window, text='Sign Up', font=font_large, command=self.signup, width=15)
+        self.signup_button.pack(pady=20)
+
+        self.signup_window.mainloop()
+
+    def signup(self):
+        username = self.signup_username_entry.get()
+        password = self.signup_password_entry.get()
+        name = self.signup_name_entry.get()
+        age = self.signup_age_entry.get()
+        email = self.signup_email_entry.get()
+
+        if self.db.insert_user(username, password, name, age, email):
+            messagebox.showinfo('Sign Up Successful', 'You can now login.')
+            self.signup_window.destroy()
+            self.create_login_window()  # Go back to login window
+        else:
+            messagebox.showerror('Sign Up Failed', 'Username already exists or invalid data.')
 
 
 class ToolManagementApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Tool Management System")
-        self.center_window(800, 600)
+    def __init__(self, user, db):
+        self.user = user
+        self.db = db
+        self.create_tool_management_window()
 
-        # Initialize database manager and user role
-        self.db_manager = DatabaseManager()
-        self.user_role = None
+    def create_tool_management_window(self):
+        self.window = tk.Tk()
+        self.window.geometry('1920x1080')
+        self.window.title('Tool Management Application')
 
-        # Start with the login screen
-        self.create_login_frame()
+        self.user_label = tk.Label(self.window, text=f"Logged in as {self.user[2]}", font=('Arial', 24))
+        self.user_label.pack(pady=10)
 
-    def center_window(self, width, height):
-        """Center the window on the screen."""
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        x = (screen_width // 2) - (width // 2)
-        y = (screen_height // 2) - (height // 2)
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        # Updated buttons to show "Coming Soon" feature
+        self.view_tools_button = tk.Button(self.window, text='View All Tools', font=('Arial', 20), command=self.coming_soon)
+        self.view_tools_button.pack(pady=20)
 
-    def clear_frame(self):
-        """Clear all widgets from the current frame."""
-        for widget in self.root.winfo_children():
-            widget.destroy()
+        self.borrow_button = tk.Button(self.window, text='Borrow Tool', font=('Arial', 20), command=self.coming_soon)
+        self.borrow_button.pack(pady=20)
 
-    def create_login_frame(self):
-        """Create the login frame for role selection."""
-        self.clear_frame()
-        tk.Label(self.root, text="Tool Management System", font=("Arial", 18)).pack(pady=20)
-        tk.Label(self.root, text="Select Role:", font=("Arial", 14)).pack(pady=10)
+        self.return_button = tk.Button(self.window, text='Return Tool', font=('Arial', 20), command=self.coming_soon)
+        self.return_button.pack(pady=20)
 
-        tk.Button(self.root, text="Admin", font=("Arial", 12), command=lambda: self.switch_role("Admin")).pack(pady=5)
-        tk.Button(self.root, text="Regular User", font=("Arial", 12), command=lambda: self.switch_role("User")).pack(pady=5)
+        self.search_button = tk.Button(self.window, text='Search Tool', font=('Arial', 20), command=self.coming_soon)
+        self.search_button.pack(pady=20)
 
-    def switch_role(self, role):
-        """Switch to the appropriate dashboard based on the selected role."""
-        self.user_role = role
-        if role == "Admin":
-            self.create_admin_frame()
-        elif role == "User":
-            self.create_user_frame()
+        self.logout_button = tk.Button(self.window, text='Logout', font=('Arial', 20), command=self.logout)
+        self.logout_button.pack(pady=20)
 
-    def create_admin_frame(self):
-        """Create the admin dashboard."""
-        self.clear_frame()
-        tk.Label(self.root, text="Admin Dashboard", font=("Arial", 18)).pack(pady=20)
+        self.window.mainloop()
 
-        tk.Button(self.root, text="Add Tool", command=self.add_tool_window).pack(pady=5)
-        tk.Button(self.root, text="Edit/Delete Tools", command=self.edit_tool_window).pack(pady=5)
-        tk.Button(self.root, text="View Inventory", command=self.view_inventory_window).pack(pady=5)
-        tk.Button(self.root, text="Back", command=self.create_login_frame).pack(pady=20)
+    def coming_soon(self):
+        """Function to show 'Coming Soon' message."""
+        messagebox.showinfo("Coming Soon", "This feature is coming soon!")
 
-    def create_user_frame(self):
-        """Create the user dashboard."""
-        self.clear_frame()
-        tk.Label(self.root, text="User Dashboard", font=("Arial", 18)).pack(pady=20)
-
-        tk.Button(self.root, text="Borrow Tools", command=self.borrow_tool_window).pack(pady=5)
-        tk.Button(self.root, text="Return Tools", command=self.return_tool_window).pack(pady=5)
-        tk.Button(self.root, text="View Inventory", command=self.view_inventory_window).pack(pady=5)
-        tk.Button(self.root, text="Back", command=self.create_login_frame).pack(pady=20)
-
-    def add_tool_window(self):
-        """Create a window to add tools."""
-        top = tk.Toplevel(self.root)
-        top.title("Add Tool")
-
-        labels = ["Tool Name:", "Category:", "Condition:", "Quantity:", "Location:"]
-        entries = {}
-
-        for i, label_text in enumerate(labels):
-            tk.Label(top, text=label_text).grid(row=i, column=0, padx=10, pady=5, sticky="e")
-            entry = tk.Entry(top)
-            entry.grid(row=i, column=1, padx=10, pady=5)
-            entries[label_text[:-1].lower()] = entry
-
-        def save_tool():
-            try:
-                # Extract and validate inputs
-                name = entries["tool name"].get().strip()
-                category = entries["category"].get().strip()
-                condition = entries["condition"].get().strip() or "Good"
-                quantity = entries["quantity"].get().strip()
-                location = entries["location"].get().strip()
-
-                if not name or not category or not quantity:
-                    raise ValueError("Tool Name, Category, and Quantity are required.")
-                if not quantity.isdigit() or int(quantity) <= 0:
-                    raise ValueError("Quantity must be a positive integer.")
-
-                self.db_manager.add_tool(name, category, condition, int(quantity), location)
-                messagebox.showinfo("Success", f"Tool '{name}' added successfully!")
-                top.destroy()
-            except ValueError as ve:
-                messagebox.showerror("Input Error", str(ve))
-            except Exception as e:
-                messagebox.showerror("Error", f"An unexpected error occurred: {e}")
-
-        tk.Button(top, text="Add Tool", command=save_tool).grid(row=len(labels), column=0, columnspan=2, pady=10)
-
-    def edit_tool_window(self):
-        """Placeholder for the edit/delete tools functionality."""
-        messagebox.showinfo("Coming Soon", "Edit/Delete functionality will be implemented soon.")
-
-    def view_inventory_window(self):
-        """Create a window to view all tools in the inventory."""
-        top = tk.Toplevel(self.root)
-        top.title("Inventory")
-
-        tk.Label(top, text="Inventory List", font=("Arial", 14)).pack(pady=10)
-        tree = ttk.Treeview(top, columns=("ID", "Name", "Category", "Condition", "Quantity", "Location"), show="headings")
-        tree.heading("ID", text="ID")
-        tree.heading("Name", text="Name")
-        tree.heading("Category", text="Category")
-        tree.heading("Condition", text="Condition")
-        tree.heading("Quantity", text="Quantity")
-        tree.heading("Location", text="Location")
-        tree.pack(fill=tk.BOTH, expand=True)
-
-        def refresh_inventory():
-            # Clear existing rows
-            for row in tree.get_children():
-                tree.delete(row)
-
-            # Fetch and insert updated tools
-            tools = self.db_manager.get_all_tools()
-            for tool in tools:
-                tree.insert("", tk.END, values=tool)
-
-        refresh_inventory()
-
-        tk.Button(top, text="Refresh", command=refresh_inventory).pack(pady=5)
-
-    def borrow_tool_window(self):
-        """Placeholder for the borrow tool functionality."""
-        messagebox.showinfo("Coming Soon", "Borrow functionality will be implemented soon.")
-
-    def return_tool_window(self):
-        """Placeholder for the return tool functionality."""
-        messagebox.showinfo("Coming Soon", "Return functionality will be implemented soon.")
+    def logout(self):
+        self.window.destroy()
+        LoginApp()
 
 
+# Start the application
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = ToolManagementApp(root)
-    root.mainloop()
+    LoginApp()  # Start with the login screen
