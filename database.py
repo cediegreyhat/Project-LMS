@@ -1,9 +1,10 @@
-#Function to initialize Communication to DB
 import sqlite3
 from contextlib import closing
 from datetime import datetime
 
+
 class DatabaseManager:
+    def __init__(self, db_name="inventory.db"):
     def __init__(self, db_name="db/inventory.db"):
         
         self.db_name = db_name
@@ -48,8 +49,6 @@ class DatabaseManager:
         self._execute_query(tool_table)
         self._execute_query(transaction_table)
 
-    # -------- Tool Management Methods --------
-
     def add_tool(self, name, category, condition, quantity, location):
         """
         Adds a new tool to the database.
@@ -59,7 +58,6 @@ class DatabaseManager:
         VALUES (?, ?, ?, ?, ?);
         """
         self._execute_query(query, [name, category, condition, quantity, location])
-        print(f"Tool '{name}' added successfully.")
 
     def get_all_tools(self):
         """
@@ -83,55 +81,40 @@ class DatabaseManager:
         if condition:
             query += "condition = ?, "
             params.append(condition)
-        if quantity is not None:  # Allow updating quantity to 0
+        if quantity is not None:
             query += "quantity = ?, "
             params.append(quantity)
         if location:
             query += "location = ?, "
             params.append(location)
-        
+
         # Remove the trailing comma and space
         query = query.rstrip(", ") + " WHERE tool_id = ?;"
         params.append(tool_id)
-        
+
         self._execute_query(query, params)
-        print(f"Tool with ID {tool_id} updated successfully.")
-
-    def delete_tool(self, tool_id):
-        """
-        Deletes a tool from the database.
-        """
-        query = "DELETE FROM Tools WHERE tool_id = ?;"
-        self._execute_query(query, [tool_id])
-        print(f"Tool with ID {tool_id} deleted successfully.")
-
-    # -------- Transaction Management Methods --------
 
     def borrow_tool(self, user_id, tool_id):
         """
         Logs a borrow transaction and reduces tool quantity.
         """
-        # Check tool availability
         tool = self._execute_query("SELECT quantity FROM Tools WHERE tool_id = ?", [tool_id], fetch=True)
         if not tool or tool[0][0] <= 0:
             print("Error: Tool is not available for borrowing.")
             return
-        
+
         # Borrow the tool
         query = """
         INSERT INTO Transactions (user_id, tool_id)
         VALUES (?, ?);
         """
         self._execute_query(query, [user_id, tool_id])
-        # Reduce tool quantity
         self.update_tool(tool_id, quantity=tool[0][0] - 1)
-        print(f"Tool with ID {tool_id} borrowed successfully by User {user_id}.")
 
     def return_tool(self, user_id, tool_id):
         """
         Logs a return transaction and increases tool quantity.
         """
-        # Check if the user has borrowed the tool
         query = """
         SELECT transaction_id FROM Transactions 
         WHERE user_id = ? AND tool_id = ? AND return_date IS NULL;
@@ -140,19 +123,15 @@ class DatabaseManager:
         if not transaction:
             print("Error: No active borrow transaction found for this user and tool.")
             return
-        
+
         # Return the tool
         update_query = """
         UPDATE Transactions SET return_date = ? 
         WHERE transaction_id = ?;
         """
         self._execute_query(update_query, [datetime.now().strftime('%Y-%m-%d %H:%M:%S'), transaction[0][0]])
-        # Increase tool quantity
         tool = self._execute_query("SELECT quantity FROM Tools WHERE tool_id = ?", [tool_id], fetch=True)
         self.update_tool(tool_id, quantity=tool[0][0] + 1)
-        print(f"Tool with ID {tool_id} returned successfully by User {user_id}.")
-
-    # -------- Search Methods --------
 
     def search_tools(self, keyword):
         """
@@ -164,26 +143,45 @@ class DatabaseManager:
         """
         return self._execute_query(query, [f"%{keyword}%", f"%{keyword}%"], fetch=True)
 
-    # -------- Utility Methods --------
+    def insert_user(self, username, password, name, age, email):
+        """Insert a new user into the database."""
+        conn = sqlite3.connect('user_db.db')
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                'INSERT INTO users (username, password, name, age, email) VALUES (?, ?, ?, ?, ?)',
+                (username, password, name, int(age), email)
+            )
+            conn.commit()
+            return True  # Successful insertion
+        except sqlite3.IntegrityError:
+            return False  # Username already exists
+        except ValueError:
+            return None  # Invalid age value
+        finally:
+            conn.close()
 
-    def clear_tables(self):
-        """
-        Clears all data from the tables.
-        """
-        self._execute_query("DELETE FROM Tools;")
-        self._execute_query("DELETE FROM Transactions;")
-        print("All tables cleared.")
+    def get_user(self, username, password):
+        """Retrieve a user from the database based on username and password."""
+        conn = sqlite3.connect('user_db.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password))
+        user = cursor.fetchone()
+        conn.close()
+        return user
 
-# Example Usage
-if __name__ == "__main__":
-    db = DatabaseManager()
-    db.add_tool("Hammer", "Hand Tool", "Good", 5, "Storage A")
-    db.add_tool("Drill", "Power Tool", "Good", 3, "Storage B")
-    print("Tools in inventory:")
-    for tool in db.get_all_tools():
-        print(tool)
-    db.borrow_tool(1, 1)  # User 1 borrows Tool 1
-    db.return_tool(1, 1)  # User 1 returns Tool 1
-    print("Search results for 'Drill':")
-    for tool in db.search_tools("Drill"):
-        print(tool)
+    def init_user_database(self):
+        """Initialize the user database and create the users table if it doesn't exist."""
+        conn = sqlite3.connect('user_db.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY,
+                password TEXT NOT NULL,
+                name TEXT NOT NULL,
+                age INTEGER NOT NULL,
+                email TEXT NOT NULL
+            )
+        """)
+        conn.commit()
+        conn.close()
