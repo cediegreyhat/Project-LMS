@@ -1,13 +1,14 @@
 import tkinter as tk
 from tkinter import messagebox
-from database_manager import DatabaseManager
+from database import DatabaseManager
 
 
-class LoginApp:
+class DatabaseManager:
     def __init__(self):
-        self.db = DatabaseManager()
-        self.db.init_user_database()  # Initialize the user database
+        self.database_manager = DatabaseManager()
+        self.database_manager.init_user_database()
         self.create_login_window()
+
 
     def create_login_window(self):
         self.login_window = tk.Tk()
@@ -136,4 +137,4 @@ class ToolManagementApp:
 
 # Start the application
 if __name__ == "__main__":
-    LoginApp()  # Start with the login screen
+    DatabaseManager()  # Start with the login screen
