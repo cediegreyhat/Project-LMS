@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from database_manager import DatabaseManager
+from database import DatabaseManager
 
 
 class LoginApp:
