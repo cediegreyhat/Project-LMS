@@ -78,6 +78,12 @@ def handle_update_tool(db):
 def handle_delete_tool(db):
     tool_id = get_valid_int("Enter the Tool ID to delete: ")
     db.delete_tool(tool_id)
+    
+def clear_tables(self):
+    """Clears all data from tools and transactions tables."""
+    self._execute_query("DELETE FROM Tools;")
+    self._execute_query("DELETE FROM Transactions;")
+
 
 def handle_borrow_tool(db):
     user_id = get_valid_int("Enter User ID: ")
@@ -108,8 +114,26 @@ def handle_clear_data(db):
     else:
         print("Operation cancelled.")
 
+def account_login(db):
+    print("=== Login ===")
+    username = get_valid_str("Enter username: ")
+    password = get_valid_str("Enter password: ")
+    
+    user = db.get_user_by_credentials(username, password)
+    
+    if user:
+        print(Fore.GREEN + "Login successful!" + Style.RESET_ALL)
+        return True
+    else:
+        print(Fore.RED + "Invalid username or password. Please try again." + Style.RESET_ALL)
+        return False
+
 if __name__ == "__main__":
-    db = DatabaseManager()
+    db = DatabaseManager('db/inventory.db')
+    
+    while not account_login(db):
+        pass  # Keep prompting until successful login
+    
     while True:
         main_menu()
         choice = input("Enter your choice: ").strip()
