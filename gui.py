@@ -1,6 +1,7 @@
+import datetime
 import os
 import tkinter as tk
-from tkinter import ttk
+from tkinter import StringVar, ttk
 import customtkinter as ctk
 from tkinter import messagebox
 from tkinter import simpledialog
@@ -105,7 +106,8 @@ class LoginApp:
 class ToolManagementApp:
     def __init__(self, user, db):
         self.user = user
-        self.db = db
+        self.db_path = db_path
+        self.db = DatabaseManager(db_path)
         self.create_dashboard_window()
 
     def create_dashboard_window(self):
@@ -116,7 +118,8 @@ class ToolManagementApp:
 
         # Sidebar
         sidebar = ctk.CTkFrame(self.window, width=250, fg_color="#2b2b2b", corner_radius=0)
-        sidebar.pack(side="left", fill="y")
+        sidebar.pack(side="left", fill="y", padx=10, pady=10)
+        
 
         # Profile Section
         profile_image_path = "assets/user.png"
@@ -153,7 +156,7 @@ class ToolManagementApp:
         inventory_label = ctk.CTkLabel(dashboard_frame, text="Inventory Overview", font=("Roboto", 20))
         inventory_label.pack(pady=(20, 10))
 
-        self.inventory_table = ttk.Treeview(dashboard_frame, columns=("ID", "Name", "Category", "Condition", "Quantity"), show="headings")
+        self.inventory_table = ttk.Treeview(dashboard_frame, columns=("ID", "Name", "Category", "Condition", "Quantity", "Status"), show="headings")  # Added Status column
         self.inventory_table.pack(pady=10, padx=20, fill="both", expand=True)
 
         for col in self.inventory_table["columns"]:
@@ -181,7 +184,8 @@ class ToolManagementApp:
         # Fetch and insert new data
         tools = self.db.fetch_all_tools()
         for tool in tools:
-            self.inventory_table.insert("", "end", values=(tool[0], tool[1], tool[2], tool[3], tool[4]))
+            borrowed_status = "Borrowed" if tool[2] == 'borrowed' else "Available"
+            self.inventory_table.insert("", "end", values=(tool[0], tool[1], tool[2], tool[3], tool[4], borrowed_status))  # Add borrowed status column
 
         # Update the pie chart after the inventory table is updated
         self.update_pie_chart()
@@ -211,19 +215,100 @@ class ToolManagementApp:
             chart_canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def borrow_tool(self):
-        tool_name = simpledialog.askstring("Borrow Tool", "Enter tool name:")
-        if tool_name:
-            tool = self.db.fetch_tool_by_name(tool_name)
-            if tool:
-                if tool[4] > 0:  # Check if tool is available
-                    self.db.update_tool_quantity(tool_name, tool[4] - 1)  # Decrease the quantity
-                    messagebox.showinfo("Success", f"Successfully borrowed {tool_name}.")
-                    self.update_inventory_table()
+        try:
+            # Fetch all tools
+            tools = self.db.get_tools()
+            print(f"Tools fetched from database: {tools}")  # Debugging
+
+            # Filter available tools
+            available_tools = [tool for tool in tools if tool[2] == 'available']
+            print(f"Available tools: {available_tools}")  # Debugging
+
+            if not available_tools:
+                messagebox.showwarning("No Tools Available", "There are no tools available to borrow.")
+                return
+
+            # Populate dropdown
+            tool_names = [tool[1] for tool in available_tools]
+            print(f"Tool names in dropdown: {tool_names}")  # Debugging
+
+            # Create borrowing window
+            borrow_tool_window = ctk.CTkToplevel(self.window)
+            borrow_tool_window.geometry("400x400")
+            borrow_tool_window.title("Borrow Tool")
+            borrow_tool_window.attributes('-topmost', True)
+
+            borrow_tool_frame = ctk.CTkFrame(borrow_tool_window)
+            borrow_tool_frame.pack(pady=20, padx=20, fill='both', expand=True)
+
+            # Tool Dropdown
+            tool_label = ctk.CTkLabel(borrow_tool_frame, text="Select Tool", font=('Roboto', 14))
+            tool_label.grid(row=0, column=0, padx=10, pady=10, sticky="e")
+            tool_var = StringVar(borrow_tool_frame)
+            tool_var.set(tool_names[0])  # Default to first available tool
+            tool_dropdown = ctk.CTkOptionMenu(borrow_tool_frame, variable=tool_var, values=tool_names)
+            tool_dropdown.grid(row=0, column=1, pady=10)
+
+            # Borrower Details
+            borrower_label = ctk.CTkLabel(borrow_tool_frame, text="Borrower's Name", font=('Roboto', 14))
+            borrower_label.grid(row=1, column=0, padx=10, pady=10, sticky="e")
+            borrower_entry = ctk.CTkEntry(borrow_tool_frame, font=('Roboto', 14), width=250, placeholder_text="Enter borrower's name")
+            borrower_entry.grid(row=1, column=1, pady=10)
+
+            # Borrow Date
+            date_label = ctk.CTkLabel(borrow_tool_frame, text="Borrow Date", font=('Roboto', 14))
+            date_label.grid(row=2, column=0, padx=10, pady=10, sticky="e")
+            date_entry = ctk.CTkEntry(borrow_tool_frame, font=('Roboto', 14), width=250, placeholder_text="Enter borrow date (YYYY-MM-DD)")
+            date_entry.grid(row=2, column=1, pady=10)
+
+            # Borrow Button Logic
+            def borrow_selected_tool():
+                selected_tool_name = tool_var.get()
+                borrower_name = borrower_entry.get().strip()
+                borrow_date = date_entry.get().strip()
+
+                # Validate fields
+                if not borrower_name or not borrow_date:
+                    messagebox.showerror("Error", "Please fill in all fields.")
+                    return
+
+                # Validate borrow date format
+                try:
+                    datetime.datetime.strptime(borrow_date, "%Y-%m-%d").date()
+                except ValueError:
+                    messagebox.showerror("Error", "Invalid date format. Use YYYY-MM-DD.")
+                    return
+
+                # Borrow Tool
+                tool_id = next((tool[0] for tool in available_tools if tool[1] == selected_tool_name), None)
+                print(f"Borrowing tool with ID: {tool_id}")  # Debugging
+
+                if tool_id:
+                    # Attempt to borrow the tool in the database
+                    success = self.db.borrow_tool(tool_id, borrower_name, borrow_date)
+                    if success:
+                        messagebox.showinfo("Success", f"'{selected_tool_name}' borrowed by '{borrower_name}'.")
+                        borrow_tool_window.destroy()
+                        self.update_inventory_table()
+                        self.update_pie_chart()
+                    else:
+                        messagebox.showerror("Error", "Failed to borrow tool. Please try again.")
                 else:
-                    messagebox.showerror("Error", f"{tool_name} is out of stock.")
-            else:
-                messagebox.showerror("Error", "Tool not found.")
-            
+                    messagebox.showerror("Error", "Selected tool not found.")
+
+            # Buttons
+            borrow_button = ctk.CTkButton(borrow_tool_frame, text="Borrow", command=borrow_selected_tool)
+            borrow_button.grid(row=3, column=0, columnspan=2, pady=20)
+
+            close_button = ctk.CTkButton(borrow_tool_window, text="Close", command=borrow_tool_window.destroy)
+            close_button.pack(side="bottom", pady=10)
+
+        except Exception as e:
+            print(f"Error: {e}")
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+
+    
     def delete_tool(self):
         selected_item = self.inventory_table.selection()
         
@@ -245,55 +330,62 @@ class ToolManagementApp:
             self.update_pie_chart()  # Update the pie chart
             
     def view_tools(self):
-        """Display the tools in the inventory."""
-        self.update_inventory_table()
-        messagebox.showinfo("View Tools", "Tools have been displayed in the table.")
-
+        try:
+            # Ask user if they want to view all tools or filter by condition
+            response = simpledialog.askstring(
+                "View Tools",
+                "Do you want to view all tools or filter by condition? Type 'all' for all tools or 'filter' to filter by condition."
+            )
+            
+            if response and response.lower() == 'filter':
+                # Display available conditions for filtering
+                filter_condition = simpledialog.askstring(
+                    "Filter Condition", "Enter the condition to filter by (e.g., 'good', 'damaged'):"
+                )
+                if filter_condition:
+                    tools = self.db.fetch_tools_by_condition(filter_condition)
+                    if not tools:
+                        messagebox.showinfo("No Tools Found", f"No tools found with condition '{filter_condition}'.")
+                    else:
+                        self.update_inventory_table(tools)
+                        messagebox.showinfo("Filtered Tools", f"Tools with condition '{filter_condition}' displayed.")
+            elif response and response.lower() == 'all':
+                # View all tools in the inventory
+                self.update_inventory_table()
+                messagebox.showinfo("View Tools", "All tools have been displayed.")
+            else:
+                messagebox.showwarning("Invalid Input", "Please enter 'all' or 'filter' to proceed.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while viewing tools: {e}")
+    
+    
     def return_tool(self):
         try:
-            # Get all tools from the database
+            # Fetch all tools
             tools = self.db.get_tools()
             borrowed_tools = [tool for tool in tools if tool[2] == 'borrowed']
 
-            # Check if there are any borrowed tools to return
             if not borrowed_tools:
-                messagebox.showwarning("No Borrowed Tools", "You have no tools to return.")
+                messagebox.showwarning("No Borrowed Tools", "There are no borrowed tools to return.")
                 return
 
-            # Extract the names of the borrowed tools
+            # Get tool names for the borrowed tools
             tool_names = [tool[1] for tool in borrowed_tools]
-            
-            # Ask the user for the tool they want to return
             tool_name = simpledialog.askstring(
-                "Return Tool", 
+                "Return Tool",
                 f"Borrowed tools: \n{', '.join(tool_names)}\n\nEnter the tool name you want to return:"
             )
 
-            # Validate the tool name entered by the user
             if tool_name and tool_name in tool_names:
-                # Get the tool ID based on the name entered
                 tool_id = borrowed_tools[tool_names.index(tool_name)][0]
-                
-                # Debugging: Print the tool_id to ensure it's correct
-                print(f"Selected tool_id: {tool_id}")  # Add this line for debugging
-                
-                # Return the tool by updating the database
                 self.db.return_tool(tool_id)
-                
-                # Notify the user that the tool has been returned successfully
                 messagebox.showinfo("Tool Returned", f"'{tool_name}' has been returned.")
-                
-                # Update the inventory table and pie chart
-                self.update_inventory_table()
-                self.update_pie_chart()
+                self.update_inventory_table()  # Update inventory display
+                self.update_pie_chart()  # Update pie chart
             else:
                 messagebox.showerror("Invalid Tool", "The selected tool is not valid for return.")
-        
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred while returning the tool: {e}")
-            
-
-
 
     def search_tool(self):
         tool_name = simpledialog.askstring("Search Tool", "Enter the name of the tool you want to search:")
@@ -347,7 +439,7 @@ class ToolManagementApp:
         location_entry = ctk.CTkEntry(add_tool_frame, font=('Roboto', 14), width=250, placeholder_text="Enter tool location")
         location_entry.grid(row=4, column=1, pady=10)
 
-        # Add Tool Button
+        # Add Tool Save Function
         def save_tool():
             tool_name = name_entry.get()
             tool_category = category_entry.get()
@@ -364,13 +456,23 @@ class ToolManagementApp:
                 messagebox.showerror("Error", "Quantity must be a number.")
                 return
 
+            # Check if the tool already exists in the database
+            if self.db.fetch_tool_by_name(tool_name):
+                messagebox.showwarning("Duplicate Tool", "A tool with this name already exists.")
+                return
+
             # Insert tool into the database
-            if self.db.insert_tool(tool_name, tool_category, tool_condition, int(tool_quantity), tool_location):
-                messagebox.showinfo("Success", f"{tool_name} added successfully.")
-                add_tool_window.destroy()  # Close the popup
-                self.update_inventory_table()  # Update the inventory table
-            else:
-                messagebox.showerror("Error", "Failed to add tool. Please try again.")
+            try:
+                # Insert the tool using the insert_tool method of the database
+                if self.db.insert_tool(tool_name, tool_category, tool_condition, int(tool_quantity), tool_location):
+                    messagebox.showinfo("Success", f"{tool_name} added successfully.")
+                    add_tool_window.destroy()  # Close the popup
+                    self.update_inventory_table()  # Update the inventory table
+                else:
+                    messagebox.showerror("Error", "Failed to add tool. Please try again.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to add tool: {e}")
+
 
         # Save Button
         save_button = ctk.CTkButton(add_tool_frame, text="Save", command=save_tool)
@@ -386,6 +488,7 @@ class ToolManagementApp:
         condition_entry.bind("<Return>", lambda event: quantity_entry.focus_set())
         quantity_entry.bind("<Return>", lambda event: location_entry.focus_set())
         location_entry.bind("<Return>", lambda event: save_button.invoke())  # Trigger save when Enter is pressed in location field
+
 
 
     def logout(self):

@@ -28,7 +28,8 @@ class DatabaseManager:
                     quantity INTEGER NOT NULL,
                     location TEXT,
                     status TEXT DEFAULT 'available',
-                    borrower TEXT
+                    borrower TEXT,
+                    borrow_date TEXT 
                 );
             """)
             cursor.execute("""
@@ -60,6 +61,8 @@ class DatabaseManager:
                 );
             """)
             self.conn.commit()
+
+
 
     def check_and_add_default_data(self):
         """Add default data to the database."""
@@ -98,29 +101,52 @@ class DatabaseManager:
         return self._execute_query("SELECT * FROM tools", fetch=True)
 
     def fetch_tool_by_name(self, name):
-        self.cursor.execute("SELECT * FROM tools WHERE name=?", (name,))
-        return self.cursor.fetchone()
+        query = "SELECT * FROM tools WHERE name=?"
+        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
+            cursor.execute(query, (name,))
+            return cursor.fetchone()
+
     
     def update_tool_quantity(self, name, new_quantity):
         self.cursor.execute("UPDATE tools SET quantity=? WHERE name=?", (new_quantity, name))
         self.conn.commit()
 
-    def borrow_tool(self, tool_id, borrower_name):
-        """Mark tool as borrowed by a student."""
-        self._execute_query('UPDATE tools SET status = ?, borrower = ? WHERE tool_id = ?', ('borrowed', borrower_name, tool_id))
+    def borrow_tool(self, tool_id, borrower_name, borrow_date):
+    # Decrement quantity and update status, borrower, and borrow date
+        query = """
+        UPDATE tools
+        SET 
+            quantity = quantity - 1,
+            status = CASE WHEN quantity = 1 THEN 'borrowed' ELSE status END,
+            borrower = ?,
+            borrow_date = ? 
+        WHERE tool_id = ? AND quantity > 0
+    """
+        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
+            cursor.execute(query, (borrower_name, borrow_date, tool_id)) 
+        self.conn.commit()
+
+
+
         
     def get_tools(self):
-        query = "SELECT id, name, status FROM tools"  # Ensure the query selects the right columns
-        cursor = self.conn.cursor()
-        cursor.execute(query)
-        return cursor.fetchall()
+        # Correct the query to use tool_id instead of id
+        query = "SELECT tool_id, name, status FROM tools" 
+        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
+            cursor.execute(query)
+            return cursor.fetchall()
+
+
 
 
     def return_tool(self, tool_id):
-        query = "UPDATE tools SET status = 'available' WHERE id = ?"
-        cursor = self.conn.cursor()
-        cursor.execute(query, (tool_id,))
-        self.conn.commit()
+        # Clear borrower and set status to 'available'
+        query = "UPDATE tools SET status = 'available', borrower = NULL WHERE tool_id = ?"
+        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
+            cursor.execute(query, (tool_id,))
+            self.conn.commit()
+
+
 
 
     def search_tool(self, tool_name):
@@ -130,14 +156,14 @@ class DatabaseManager:
     def insert_tool(self, tool_name, tool_category, tool_condition, tool_quantity, tool_location):
         try:
             query = '''INSERT INTO tools (name, category, condition, quantity, location, status) 
-                VALUES (?, ?, ?, ?, ?, ?)'''
-            self.cursor.execute(query, (tool_name, tool_category, tool_condition, tool_quantity, tool_location, 'available'))
-            self.connection.commit()
-            return True
+                    VALUES (?, ?, ?, ?, ?, ?)'''
+            with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
+                cursor.execute(query, (tool_name, tool_category, tool_condition, tool_quantity, tool_location, 'available'))
+                self.conn.commit()
+                return True
         except Exception as e:
             print(f"Error inserting tool: {e}")
         return False
-
 
 
     def add_tool(self, name, category, condition, quantity, location):
@@ -171,7 +197,10 @@ class DatabaseManager:
         query = query.rstrip(", ") + " WHERE tool_id = ?"
         params.append(tool_id)
 
-        self._execute_query(query, params)
+        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
+            cursor.execute(query, params)
+            self.conn.commit()
+
 
     def insert_user(self, username, password, name, age, email):
         """Insert a new user into the database."""
