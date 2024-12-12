@@ -74,6 +74,9 @@ The motivation stems from:
   ├── gui.py           # Frontend GUI
 /db
   └── inventory.db     # SQLite database file
+
+/assets                # Miscellaneous
+
 /docs
   ├── User_manual.pdf  # User manual documentation
   ├── project_report.pdf # Project report
@@ -121,7 +124,7 @@ Run the project:
 ## **Contributors**
 Team Members:
 
-    Lhord Cedrick T. Delos Santos (Team Leader): Backend Development, Database Integration
+    Lhord Cedrick T. Delos Santos (Team Leader): Full-Stacked Development, Database Integration
     Luis Fernandez: Basic GUI Development
     Warren Dollendo: Basic GUI Development
     Dan Angelo Domagsang: Basic GUI Development
