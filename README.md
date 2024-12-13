@@ -133,7 +133,10 @@ Team Members:
     Charles Benedict Rafols: Database Development/Debug
     Charles Allen Lacsa: Documentation
     Brix Baldiray: Documentation
-    Dylan Guliquey: Testing and Bug Fixing
+    Dylan Guliquey: Testing and Debug
+    Joe Ckelvin Barboza: Documentation
+    Van Hallen Hayag: Documentation
+
 
 Feel free to contribute or raise issues in the repository! 🚀
 
