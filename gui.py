@@ -5,7 +5,7 @@ from tkinter import StringVar, ttk
 import customtkinter as ctk
 from tkinter import messagebox
 from tkinter import simpledialog
-from PIL import Image
+from PIL import Image, ImageTk
 from matplotlib.figure import Figure
 from database import DatabaseManager
 import matplotlib.pyplot as plt
@@ -20,55 +20,66 @@ ctk.set_default_color_theme("dark-blue")
 class LoginApp:
     def __init__(self, db_path):
         print("Initializing LoginApp...")
-        self.db_path = db_path
+        self.db_path = db_path  
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self.db = DatabaseManager(self.db_path)  
-        print("Creating login window...")
         self.create_login_window()
-
+        
     def create_login_window(self):
         print("Creating login window...")
         self.login_window = ctk.CTk()
-        self.login_window.geometry('500x400')
+        self.login_window.geometry('600x450')
         self.login_window.title('Login to Project-LMS')
-        self.login_window.resizable(False, False) 
+        self.login_window.resizable(False, False)  # Disable resizing
 
-        # Background image
-        bg_image_path = "assets/background_image.jpg"
+        # Background image with a modern, sleek design
+        bg_image_path = "assets/background_image.jpg"  # You can customize this
         bg_image = Image.open(bg_image_path)
         self.bg_image = ctk.CTkImage(light_image=None, dark_image=bg_image, size=(1280, 720))
         bg_label = ctk.CTkLabel(self.login_window, image=self.bg_image)
         bg_label.place(relwidth=1, relheight=1)
 
         # Main frame for login
-        login_frame = ctk.CTkFrame(self.login_window, corner_radius=10, fg_color="#2b2b2b")  # A simple styled frame
-        login_frame.pack(pady=50, padx=50, fill='both', expand=True)
+        login_frame = ctk.CTkFrame(self.login_window, corner_radius=15, fg_color="#2b2b2b", width=400, height=350) 
+        login_frame.place(relx=0.5, rely=0.5, anchor="center")  # Centered
 
-        # Title label
-        title_label = ctk.CTkLabel(login_frame, text="Login", font=('Roboto', 24, 'bold'))
-        title_label.grid(row=0, column=0, columnspan=2, pady=(10, 20))
+        # Title label (LMS Login)
+        title_label = ctk.CTkLabel(login_frame, text="Login", font=('Roboto', 28, 'bold'), text_color="white")
+        title_label.grid(row=0, column=0, columnspan=2, pady=(20, 40), sticky="n")
 
         # Username Entry
-        self.username_label = ctk.CTkLabel(login_frame, text='Username', font=('Roboto', 14))
+        self.username_label = ctk.CTkLabel(login_frame, text='Username', font=('Roboto', 14), text_color="white")
         self.username_label.grid(row=1, column=0, padx=10, pady=10, sticky="e")
         self.username_entry = ctk.CTkEntry(login_frame, font=('Roboto', 14), width=250, placeholder_text="Enter username")
-        self.username_entry.grid(row=1, column=1, pady=10)
+        self.username_entry.grid(row=1, column=1, pady=10, sticky="w")
         self.username_entry.bind("<Return>", lambda event: self.password_entry.focus())
 
         # Password Entry
-        self.password_label = ctk.CTkLabel(login_frame, text='Password', font=('Roboto', 14))
+        self.password_label = ctk.CTkLabel(login_frame, text='Password', font=('Roboto', 14), text_color="white")
         self.password_label.grid(row=2, column=0, padx=10, pady=10, sticky="e")
         self.password_entry = ctk.CTkEntry(login_frame, show='*', font=('Roboto', 14), width=250, placeholder_text="Enter password")
-        self.password_entry.grid(row=2, column=1, pady=10)
+        self.password_entry.grid(row=2, column=1, pady=10, sticky="w")
         self.password_entry.bind("<Return>", lambda event: self.login())
 
         # Error label
         self.error_label = ctk.CTkLabel(login_frame, text="", font=('Roboto', 12), text_color="red")
         self.error_label.grid(row=3, column=0, columnspan=2, pady=10)
 
-        # Login Button
-        self.login_button = ctk.CTkButton(login_frame, text='Login', font=('Roboto', 16), command=self.login, width=200)
+        # Login Button (Stylized)
+        self.login_button = ctk.CTkButton(login_frame, text='Login', font=('Roboto', 16, 'bold'), command=self.login, width=250, height=40, corner_radius=10)
         self.login_button.grid(row=4, column=0, columnspan=2, pady=20)
+
+        # Signup label (Stylized like a link)
+        signup_label = ctk.CTkLabel(login_frame, text="New User? Sign Up Here", font=('Arial', 12, 'underline'), text_color="lightblue", cursor="hand2")
+        signup_label.grid(row=5, column=0, columnspan=2, pady=10)
+        signup_label.bind("<Button-1>", self.SignupTransition)
+
+        # Adding subtle shadow effect
+        self.login_button.configure(fg_color="lightblue", hover_color="skyblue")
+
+        # Centering the window on the screen
+        self.login_window.eval('tk::PlaceWindow %s center' % self.login_window.winfo_toplevel())
+
         print("Entering Tkinter event loop...")
         self.login_window.mainloop()
 
@@ -88,19 +99,166 @@ class LoginApp:
         else:
             self.error_label.configure(text="Incorrect username or password.")
 
-    def signup(self):
+    def create_signup_window(self):
+        print("Creating signup window...")
+        self.signup_window = ctk.CTk()
+        self.signup_window.geometry('500x600+200+200')  # Initial off-screen position
+        self.signup_window.title('Sign Up for Project-LMS')
+        
+        # Main frame for signup with a custom background
+        signup_frame = ctk.CTkFrame(self.signup_window, corner_radius=15, fg_color="transparent", border_width=2, border_color="#444444")
+        signup_frame.grid(row=0, column=0, padx=50, pady=50, sticky="nsew")
+        
+        # Load Image
+        bg_image_path_light = "assets/background_image_light.jpg"
+        bg_image_path_dark = "assets/background_image.jpg"
+        bg_image_light = Image.open(bg_image_path_light)
+        bg_image_dark = Image.open(bg_image_path_dark)
+        
+        # Create CTkImage with size
+        self.bg_image = ctk.CTkImage(light_image=bg_image_light, dark_image=bg_image_dark, size=(500, 600))
+        
+        # Create background label and place it at the back of the signup frame
+        bg_label = ctk.CTkLabel(signup_frame, image=self.bg_image)
+        bg_label.place(relwidth=1, relheight=1) 
+
+        # Set frame grid to expand correctly
+        signup_frame.grid_rowconfigure(0, weight=1)
+        signup_frame.grid_columnconfigure(0, weight=1)
+
+        # Create a label for the background image and place it at the back of the frame
+        bg_label = ctk.CTkLabel(signup_frame, image=self.bg_image, width=500, height=600)
+        bg_label.place(relwidth=1, relheight=1)  # Use place to fill the entire frame
+
+        # Title label
+        title_label = ctk.CTkLabel(signup_frame, text="Create an Account", font=('Roboto', 20, 'bold'), text_color="white", bg_color="transparent")
+        title_label.grid(row=1, column=0, columnspan=2, pady=(10, 20), sticky="n")
+
+        # Username Entry
+        self.signup_username_label = ctk.CTkLabel(signup_frame, text='Username', font=('Roboto', 14), text_color="white", bg_color="transparent")
+        self.signup_username_label.grid(row=2, column=0, padx=10, pady=10, sticky="e")
+        self.signup_username_entry = ctk.CTkEntry(signup_frame, font=('Roboto', 14), width=280, placeholder_text="Enter username")
+        self.signup_username_entry.grid(row=2, column=1, pady=10, sticky="w")
+
+        # Password Entry
+        self.signup_password_label = ctk.CTkLabel(signup_frame, text='Password', font=('Roboto', 14), text_color="white", bg_color="transparent")
+        self.signup_password_label.grid(row=3, column=0, padx=10, pady=10, sticky="e")
+        self.signup_password_entry = ctk.CTkEntry(signup_frame, show='*', font=('Roboto', 14), width=280, placeholder_text="Enter password")
+        self.signup_password_entry.grid(row=3, column=1, pady=10, sticky="w")
+
+        # Confirm Password Entry
+        self.confirm_password_label = ctk.CTkLabel(signup_frame, text='Confirm Password', font=('Roboto', 14), text_color="white", bg_color="transparent")
+        self.confirm_password_label.grid(row=4, column=0, padx=10, pady=10, sticky="e")
+        self.confirm_password_entry = ctk.CTkEntry(signup_frame, show='*', font=('Roboto', 14), width=280, placeholder_text="Confirm password")
+        self.confirm_password_entry.grid(row=4, column=1, pady=10, sticky="w")
+
+        # Name Entry
+        self.signup_name_label = ctk.CTkLabel(signup_frame, text='Name', font=('Roboto', 14), text_color="white", bg_color="transparent")
+        self.signup_name_label.grid(row=5, column=0, padx=10, pady=10, sticky="e")
+        self.signup_name_entry = ctk.CTkEntry(signup_frame, font=('Roboto', 14), width=280, placeholder_text="Enter your name")
+        self.signup_name_entry.grid(row=5, column=1, pady=10, sticky="w")
+        
+        # Age Entry
+        self.signup_age_label = ctk.CTkLabel(signup_frame, text='Age', font=('Roboto', 14), text_color="white", bg_color="transparent")
+        self.signup_age_label.grid(row=6, column=0, padx=10, pady=10, sticky="e")
+        self.signup_age_entry = ctk.CTkEntry(signup_frame, font=('Roboto', 14), width=280, placeholder_text="Enter your age")
+        self.signup_age_entry.grid(row=6, column=1, pady=10, sticky="w")
+
+        # Email Entry
+        self.signup_email_label = ctk.CTkLabel(signup_frame, text='Email', font=('Roboto', 14), text_color="white", bg_color="transparent")
+        self.signup_email_label.grid(row=7, column=0, padx=10, pady=10, sticky="e")
+        self.signup_email_entry = ctk.CTkEntry(signup_frame, font=('Roboto', 14), width=280, placeholder_text="Enter your email")
+        self.signup_email_entry.grid(row=7, column=1, pady=10, sticky="w")
+        
+        # Error label
+        self.signup_error_label = ctk.CTkLabel(signup_frame, text="", font=('Roboto', 12), text_color="red", bg_color="transparent")
+        self.signup_error_label.grid(row=8, column=0, columnspan=2, pady=10)
+        
+        # Sign Up Button with modern styling
+        self.signup_button = ctk.CTkButton(signup_frame, text='Sign Up', font=('Roboto', 16), command=self.register_user, width=240, fg_color="#4CAF50", hover_color="#45a049")
+        self.signup_button.grid(row=9, column=0, columnspan=2, pady=20)
+        
+        # Back to Login Button with flat design and hover effect
+        back_to_login_button = ctk.CTkButton(signup_frame, text="Back to Login", font=('Roboto', 14), command=self.back_to_login, width=240, fg_color="#f44336", hover_color="#e53935")
+        back_to_login_button.grid(row=10, column=0, columnspan=2, pady=10)
+        
+        # Bind keyboard events for navigation
+        self.signup_window.bind('<Tab>', self.navigate_signup_fields)
+        self.signup_window.bind('<Return>', lambda event: self.register_user())
+
+        # Slide-in signup window with smooth animation
+        def slide_in():
+            for i in range(self.signup_window.winfo_x(), 200, -10):
+                self.signup_window.geometry(f'500x650+{i}+200')
+                self.signup_window.after(10)
+                self.signup_window.update()
+
+        # Start the sliding effect after a short delay
+        self.signup_window.after(500, slide_in)
+        self.signup_window.update()
+        self.signup_window.mainloop()
+
+
+
+        
+    def navigate_signup_fields(self, event):
+        """Navigate between fields with the Tab key."""
+        current_widget = self.signup_window.focus_get()
+        if current_widget == self.signup_username_entry:
+            self.signup_password_entry.focus()
+        elif current_widget == self.signup_password_entry:
+            self.confirm_password_entry.focus()
+        elif current_widget == self.confirm_password_entry:
+            self.signup_name_entry.focus()
+        elif current_widget == self.signup_name_entry:
+            self.signup_age_entry.focus()
+        elif current_widget == self.signup_age_entry:
+            self.signup_email_entry.focus()
+        elif current_widget == self.signup_email_entry:
+            self.signup_button.focus()
+        else:
+            self.signup_username_entry.focus()
+        
+        
+    def register_user(self):
         username = self.signup_username_entry.get()
         password = self.signup_password_entry.get()
+        confirm_password = self.confirm_password_entry.get()
         name = self.signup_name_entry.get()
         age = self.signup_age_entry.get()
         email = self.signup_email_entry.get()
 
+        # Validate input fields
+        if not username or not password or not confirm_password or not name or not age or not email:
+            self.signup_error_label.configure(text="Please fill in all fields")
+            return
+
+        if password != confirm_password:
+            self.signup_error_label.configure(text="Passwords do not match")
+            return
+
+        # Try to convert age to integer
+        try:
+            age = int(age)
+        except ValueError:
+            self.signup_error_label.configure(text="Age must be a valid number")
+            return
+
+        # Register the user in the database
         if self.db.insert_user(username, password, name, age, email):
-            messagebox.showinfo('Sign Up Successful', 'You can now login.')
-            self.signup_window.destroy()
-            self.create_login_window()  # Go back to login window
+            self.signup_error_label.configure(text="Signup successful!")
+            self.signup_window.destroy()  # Close the signup window
+            self.create_login_window()  # Create and show the login window
         else:
-            messagebox.showerror('Sign Up Failed', 'Username already exists or invalid data.')
+            self.signup_error_label.configure(text="Signup failed. Try again.")
+
+    def back_to_login(self):
+        self.signup_window.destroy()
+        self.create_login_window()
+            
+    def SignupTransition(self, event=None):
+        self.login_window.destroy()
+        self.create_signup_window()
 
 
 class ToolManagementApp:
