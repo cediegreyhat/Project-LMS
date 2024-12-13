@@ -80,8 +80,7 @@ The motivation stems from:
 /assets                # Miscellaneous
 
 /docs
-  ├── User_manual.pdf  # User manual documentation
-  ├── project_report.pdf # Project report
+  ├── User_Manual & Project_Report.pdf  # User manual documentation & Project report
 ```
 
 ## **Installation and Usage**
