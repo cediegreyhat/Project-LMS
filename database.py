@@ -1,239 +1,237 @@
 import sqlite3
 from contextlib import closing
-from datetime import datetime
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     def __init__(self, db_path):
         self.db_path = db_path
-        self.connection = sqlite3.connect(db_path)
-        self.cursor = self.connection.cursor()
         self.conn = None
+        self.cursor = None
         self.connect()
         self.create_tables()
 
     def connect(self):
-        """Establish a connection to the database."""
-        if not self.conn:
-            self.conn = sqlite3.connect(self.db_path)
+        """Establish or reconnect to the database."""
+        try:
+            if not self.conn or self.conn.closed:
+                self.conn = sqlite3.connect(self.db_path)
+                self.cursor = self.conn.cursor()
+                logger.info(f"Connected to database: {self.db_path}")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to connect to database: {e}")
+            raise
 
     def create_tables(self):
-        """Create necessary tables."""
-        with closing(self.conn.cursor()) as cursor:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS tools (
-                    tool_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    category TEXT NOT NULL,
-                    condition TEXT DEFAULT 'Good',
-                    quantity INTEGER NOT NULL,
-                    location TEXT,
-                    status TEXT DEFAULT 'available',
-                    borrower TEXT,
-                    borrow_date TEXT 
-                );
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT NOT NULL UNIQUE,
-                    password TEXT NOT NULL,
-                    name TEXT,
-                    age INTEGER,
-                    email TEXT
-                );
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS students (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT,
-                    progress INTEGER,
-                    working_hours INTEGER
-                );
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS Transactions (
-                    transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    tool_id INTEGER,
-                    borrow_date TEXT DEFAULT CURRENT_TIMESTAMP,
-                    return_date TEXT,
-                    FOREIGN KEY(tool_id) REFERENCES Tools(tool_id)
-                );
-            """)
-            self.conn.commit()
-
-
-
-    def check_and_add_default_data(self):
-        """Add default data to the database."""
-        with closing(self.conn.cursor()) as cursor:
-            cursor.execute("SELECT COUNT(*) FROM users")
-            if cursor.fetchone()[0] == 0:
-                print("No users found. Adding default users.")
-                cursor.executemany('INSERT INTO users (username, password, name, age, email) VALUES (?, ?, ?, ?, ?)', [
-                    ('admin', 'adminpass', 'Admin', 30, 'admin@example.com'),
-                ])
+        """Create necessary tables if they don't exist."""
+        table_queries = [
+            """CREATE TABLE IF NOT EXISTS tools (
+                tool_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                condition TEXT DEFAULT 'Good',
+                quantity INTEGER NOT NULL,
+                location TEXT,
+                status TEXT DEFAULT 'available',
+                borrower TEXT,
+                borrow_date TEXT,
+                user_id INTEGER,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );""",
+            """CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                name TEXT,
+                age INTEGER,
+                email TEXT
+            );""",
+            """CREATE TABLE IF NOT EXISTS students (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                progress INTEGER,
+                working_hours INTEGER
+            );""",
+            """CREATE TABLE IF NOT EXISTS transactions (
+                transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tool_id INTEGER,
+                user_id INTEGER,
+                transaction_type TEXT NOT NULL,
+                transaction_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(tool_id) REFERENCES tools(tool_id),
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );"""
+        ]
+        try:
+            with closing(self.conn.cursor()) as cursor:
+                for query in table_queries:
+                    cursor.execute(query)
                 self.conn.commit()
-
-            cursor.execute("SELECT COUNT(*) FROM tools")
-            if cursor.fetchone()[0] == 0:
-                print("No tools found. Adding default tools.")
-                cursor.executemany('INSERT INTO tools (name, category, condition, quantity, location) VALUES (?, ?, ?, ?, ?)', [
-                    ('Hammer', 'Hand Tools', 'Good', 10, 'Storage A'),
-                    ('Screwdriver', 'Hand Tools', 'Good', 15, 'Storage B'),
-                    ('Wrench', 'Hand Tools', 'Good', 5, 'Storage C')
-                ])
-                self.conn.commit()
+                logger.info("Tables created or already exist.")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to create tables: {e}")
+            raise
 
     def _execute_query(self, query, params=None, fetch=False):
-        """Helper method to execute SQL queries."""
-        with closing(self.conn.cursor()) as cursor:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            if fetch:
-                return cursor.fetchall()
-            self.conn.commit()
+        """Helper function to execute queries with error handling."""
+        try:
+            with closing(self.conn.cursor()) as cursor:
+                cursor.execute(query, params or [])
+                if fetch:
+                    return cursor.fetchall()
+                self.conn.commit()
+        except sqlite3.IntegrityError as e:
+            logger.error(f"Integrity error in query: {query}\n{e}")
+            raise
+        except Exception as e:
+            logger.error(f"Error in executing query: {query}\n{e}")
+            raise
+
+    def ensure_connection_open(self):
+        """Ensure the connection is open."""
+        if self.conn is None:
+            self.connect()
+        try:
+            # Check if the connection is still alive
+            self.conn.cursor().execute('SELECT 1')
+        except sqlite3.ProgrammingError:
+            # If cursor cannot be executed, the connection is closed, so we reconnect
+            self.connect()
+
+    def delete_tool(self, tool_id):
+        """Delete a tool from the database."""
+        self.ensure_connection_open()
+        try:
+            with closing(self.conn.cursor()) as cursor:
+                cursor.execute("DELETE FROM tools WHERE tool_id = ?", (tool_id,))
+                if cursor.rowcount == 0:
+                    raise ValueError(f"Tool with ID {tool_id} does not exist.")
+                self.conn.commit()
+                logger.info(f"Tool with ID {tool_id} deleted.")
+        except Exception as e:
+            logger.error(f"Error deleting tool with ID {tool_id}: {e}")
+            self.conn.rollback()
+            raise
 
     def fetch_all_tools(self):
         """Fetch all tools."""
         return self._execute_query("SELECT * FROM tools", fetch=True)
 
     def fetch_tool_by_name(self, name):
-        query = "SELECT * FROM tools WHERE name=?"
-        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
-            cursor.execute(query, (name,))
-            return cursor.fetchone()
+        """Fetch a tool by its name."""
+        return self._execute_query("SELECT * FROM tools WHERE name=?", (name,), fetch=True)
 
-    
-    def update_tool_quantity(self, name, new_quantity):
-        self.cursor.execute("UPDATE tools SET quantity=? WHERE name=?", (new_quantity, name))
-        self.conn.commit()
+    def fetch_tools_by_status(self, status, user_id=None):
+        """Fetch tools by status (e.g., 'available', 'borrowed')."""
+        query = "SELECT tool_id, name, status FROM tools WHERE status = ?"
+        params = [status]
 
-    def borrow_tool(self, tool_id, borrower_name, borrow_date):
-    # Decrement quantity and update status, borrower, and borrow date
-        query = """
-        UPDATE tools
-        SET 
-            quantity = quantity - 1,
-            status = CASE WHEN quantity = 1 THEN 'borrowed' ELSE status END,
-            borrower = ?,
-            borrow_date = ? 
-        WHERE tool_id = ? AND quantity > 0
-    """
-        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
-            cursor.execute(query, (borrower_name, borrow_date, tool_id)) 
-        self.conn.commit()
+        if user_id:
+            query += " AND user_id = ?"
+            params.append(user_id)
 
+        return self._execute_query(query, tuple(params), fetch=True)
 
+    def update_tool_quantity(self, tool_id, new_quantity):
+        """Update the quantity of a tool."""
+        query = "UPDATE tools SET quantity=? WHERE tool_id=?"
+        self._execute_query(query, (new_quantity, tool_id))
 
-        
-    def get_tools(self):
-        # Correct the query to use tool_id instead of id
-        query = "SELECT tool_id, name, status FROM tools" 
-        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
-            cursor.execute(query)
-            return cursor.fetchall()
-
-
-
-
-    def return_tool(self, tool_id):
-        # Clear borrower and set status to 'available'
-        query = "UPDATE tools SET status = 'available', borrower = NULL WHERE tool_id = ?"
-        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
-            cursor.execute(query, (tool_id,))
-            self.conn.commit()
-
-
-
-
-    def search_tool(self, tool_name):
-        """Search for a tool by name."""
-        return self._execute_query('SELECT * FROM tools WHERE name LIKE ?', ('%' + tool_name + '%',), fetch=True)
-    
-    def insert_tool(self, tool_name, tool_category, tool_condition, tool_quantity, tool_location):
+    def borrow_tool(self, tool_id, user_id, borrower_name, borrow_date):
+        """Borrow a tool."""
+        self.ensure_connection_open()
         try:
-            query = '''INSERT INTO tools (name, category, condition, quantity, location, status) 
-                    VALUES (?, ?, ?, ?, ?, ?)'''
-            with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
-                cursor.execute(query, (tool_name, tool_category, tool_condition, tool_quantity, tool_location, 'available'))
+            with closing(self.conn.cursor()) as cursor:
+                tool_update_query = """
+                    UPDATE tools SET 
+                        quantity = quantity - 1,
+                        status = CASE WHEN quantity - 1 = 0 THEN 'unavailable' ELSE 'available' END,
+                        user_id = ?, borrower = ?, borrow_date = ? 
+                    WHERE tool_id = ? AND quantity > 0
+                """
+                cursor.execute(tool_update_query, (user_id, borrower_name, borrow_date, tool_id))
+                if cursor.rowcount == 0:
+                    raise ValueError("Tool is unavailable or quantity is insufficient.")
+
+                transaction_query = """
+                    INSERT INTO transactions (tool_id, user_id, transaction_type, transaction_date)
+                    VALUES (?, ?, 'borrow', ?)
+                """
+                cursor.execute(transaction_query, (tool_id, user_id, borrow_date))
                 self.conn.commit()
-                return True
         except Exception as e:
-            print(f"Error inserting tool: {e}")
-        return False
+            logger.error(f"Error in borrow_tool: {e}")
+            self.conn.rollback()
+            raise
 
+    def return_tool(self, tool_id, user_id, return_date):
+        """Return a borrowed tool."""
+        self.ensure_connection_open()
+        try:
+            with closing(self.conn.cursor()) as cursor:
+                cursor.execute("""UPDATE tools SET status = 'available', borrower = NULL, borrow_date = NULL, user_id = NULL
+                                  WHERE tool_id = ? AND borrower IS NOT NULL""", (tool_id,))
+                cursor.execute("""
+                    INSERT INTO transactions (tool_id, user_id, transaction_type, transaction_date)
+                    VALUES (?, ?, 'return', ?)
+                """, (tool_id, user_id, return_date))
+                self.conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error in return_tool: {e}")
+            self.conn.rollback()
+            return False
 
-    def add_tool(self, name, category, condition, quantity, location):
-        """Add a new tool to the database."""
-        self._execute_query("INSERT INTO tools (name, category, condition, quantity, location) VALUES (?, ?, ?, ?, ?)", 
-                            [name, category, condition, quantity, location])
-
-    def delete_tool(self, tool_id):
-        """Delete a tool from the database."""
-        self._execute_query("DELETE FROM tools WHERE tool_id = ?", [tool_id])
-
-    def update_tool(self, tool_id, name=None, category=None, condition=None, quantity=None, location=None):
-        """Update tool details in the database."""
-        query = "UPDATE tools SET "
-        params = []
-        if name:
-            query += "name = ?, "
-            params.append(name)
-        if category:
-            query += "category = ?, "
-            params.append(category)
-        if condition:
-            query += "condition = ?, "
-            params.append(condition)
-        if quantity is not None:
-            query += "quantity = ?, "
-            params.append(quantity)
-        if location:
-            query += "location = ?, "
-            params.append(location)
-        query = query.rstrip(", ") + " WHERE tool_id = ?"
-        params.append(tool_id)
-
-        with closing(self.conn.cursor()) as cursor:  # Using context manager for cursor
-            cursor.execute(query, params)
-            self.conn.commit()
-
+    def insert_tool(self, name, category, condition, quantity, location):
+        """Insert a new tool into the database."""
+        query = '''INSERT INTO tools (name, category, condition, quantity, location, status) 
+                   VALUES (?, ?, ?, ?, ?, ?)'''
+        try:
+            self._execute_query(query, (name, category, condition, quantity, location, 'available'))
+            logger.info(f"Inserted tool: {name}")
+            return True
+        except Exception as e:
+            logger.error(f"Error inserting tool: {e}")
+            return False
 
     def insert_user(self, username, password, name, age, email):
         """Insert a new user into the database."""
         try:
             self._execute_query('INSERT INTO users (username, password, name, age, email) VALUES (?, ?, ?, ?, ?)',
-                                [username, password, name, age, email])
+                                (username, password, name, age, email))
+            logger.info(f"Inserted user: {username}")
             return True
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
+            logger.error(f"Error inserting user: {e}")
             return False
-        except ValueError:
+        except Exception as e:
+            logger.error(f"Error inserting user: {e}")
             return None
 
     def get_user(self, username, password):
-        """Retrieve a user from the database."""
-        return self._execute_query('SELECT * FROM users WHERE username = ? AND password = ?', [username, password], fetch=True)
+        """Get user by username and password."""
+        return self._execute_query('SELECT * FROM users WHERE username = ? AND password = ?',
+                                   (username, password), fetch=True)
 
     def close(self):
-        """Close the database connection."""
+        """Close the database connection.""" 
         if self.conn:
             self.conn.close()
+            logger.info("Database connection closed.")
 
-# Initialize the DatabaseManager for both databases
-user_db = DatabaseManager('db/users.db')
-inventory_db = DatabaseManager('db/inventory.db')
+# Example usage
+if __name__ == "__main__":
+    user_db = DatabaseManager('db/users.db')
+    inventory_db = DatabaseManager('db/inventory.db')
 
-# Initialize databases and check for tables/data
-user_db.check_and_add_default_data()
-inventory_db.check_and_add_default_data()
+    user_db.check_and_add_default_data()
+    inventory_db.check_and_add_default_data()
 
-# Example of interacting with the database (fetch all tools)
-tools = inventory_db.fetch_all_tools()
-print(tools)
+    tools = inventory_db.fetch_all_tools()
+    logger.info(f"Tools fetched: {tools}")
 
-# Close the connections
-user_db.close()
-inventory_db.close()
+    user_db.close()
+    inventory_db.close()

@@ -1,4 +1,6 @@
+#Installation GUIDE is on the Github Page
 customtkinter
 Pillow
 matplotlib
 colorama
+

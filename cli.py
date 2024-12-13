@@ -23,7 +23,7 @@ def print_banner():
 '''
     print(Fore.CYAN + banner + Style.RESET_ALL)
 
-# Function to display the tools in a formatted table
+
 def display_inventory(inventory):
     print("\nInventory List:")
     print(f"{'ID':<5}{'Name':<20}{'Category':<15}{'Condition':<10}{'Quantity':<10}{'Location':<20}{'Status':<15}{'Owner':<10}{'Date':<10}")
@@ -65,7 +65,7 @@ def get_valid_str(prompt, allow_blank=False):
             return value
         print(Fore.RED + "Invalid input. Please enter a non-empty string.")
 
-# Inventory management functions (Add, View, Update, Delete, etc.)
+
 
 def handle_add_tool(db):
     try:
@@ -131,12 +131,50 @@ def handle_delete_tool(db):
 
 def handle_borrow_tool(db):
     try:
-        user_id = get_valid_int("Enter User ID: ")
-        tool_id = get_valid_int("Enter Tool ID to borrow: ")
-        db.borrow_tool(tool_id, user_id, str(datetime.now()))
-        print(Fore.GREEN + f"Tool {tool_id} borrowed successfully!" + Style.RESET_ALL)
+        # Step 1: Fetch and display available tools
+        available_tools = db._execute_query(
+            "SELECT tool_id, name, status FROM tools WHERE quantity > 0 AND status = 'available'",
+            fetch=True
+        )
+        if not available_tools:
+            print(Fore.YELLOW + "No tools are currently available for borrowing." + Style.RESET_ALL)
+            return
+        
+        print("\nAvailable Tools for Borrowing:")
+        print(f"{'ID':<5}{'Name':<20}{'Status':<10}")
+        print("-" * 35)
+        for tool in available_tools:
+            print(f"{tool[0]:<5}{tool[1]:<20}{tool[2]:<10}")
+
+        # Step 2: Prompt for user ID and tool ID
+        user_id = get_valid_int("Enter your User ID: ")
+        tool_id = get_valid_int("Enter the Tool ID to borrow: ")
+
+        # Step 3: Validate selection
+        selected_tool = db._execute_query(
+            "SELECT tool_id, name, quantity, status FROM tools WHERE tool_id = ? AND quantity > 0 AND status = 'available'",
+            [tool_id],
+            fetch=True
+        )
+        if not selected_tool:
+            print(Fore.RED + "Invalid selection. The tool is either unavailable or does not exist." + Style.RESET_ALL)
+            return
+        
+        # Step 4: Update tool quantity and log the transaction
+        db._execute_query(
+            "UPDATE tools SET quantity = quantity - 1 WHERE tool_id = ?",
+            [tool_id]
+        )
+        db._execute_query(
+            "INSERT INTO transactions (tool_id, user_id, transaction_type, transaction_date) VALUES (?, ?, 'borrow', ?)",
+            [tool_id, user_id, datetime.datetime.now()]
+        )
+
+        print(Fore.GREEN + f"Tool '{selected_tool[0][1]}' borrowed successfully!" + Style.RESET_ALL)
+
     except Exception as e:
         print(Fore.RED + f"Error borrowing tool: {e}" + Style.RESET_ALL)
+
 
 def handle_return_tool(db):
     try:
@@ -170,11 +208,23 @@ def handle_clear_data(db):
 
 def handle_execute_sql(db):
     try:
-        sql_command = input(Fore.YELLOW + "Enter SQL command to execute: ")
-        db._execute_query(sql_command)
-        print(Fore.GREEN + "SQL command executed successfully!" + Style.RESET_ALL)
+        sql_command = input(Fore.YELLOW + "Enter SQL command to execute: ").strip()
+        if sql_command.lower().startswith("select"):
+            # For SELECT queries, fetch and display results
+            results = db._execute_query(sql_command, fetch=True)
+            if not results:
+                print(Fore.YELLOW + "No results found.")
+            else:
+                print(Fore.CYAN + "\nQuery Results:")
+                for row in results:
+                    print(Fore.CYAN + "\t".join(map(str, row)))
+        else:
+            # For non-SELECT queries, just execute
+            db._execute_query(sql_command)
+            print(Fore.GREEN + "SQL command executed successfully!" + Style.RESET_ALL)
     except Exception as e:
         print(Fore.RED + f"Error executing SQL command: {e}" + Style.RESET_ALL)
+
 
 def account_login(db):
     print(Fore.YELLOW + "=== Login ===")
@@ -193,7 +243,7 @@ def account_login(db):
 if __name__ == "__main__":
     db = DatabaseManager('db/inventory.db')
     
-    print_banner()  # Display banner as soon as the program starts
+    print_banner()  
     
     while not account_login(db):
         pass  # Retry login if login fails

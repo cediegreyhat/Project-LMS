@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
-# Set global configurations
-ctk.set_appearance_mode("dark")  # Dark mode
+
+ctk.set_appearance_mode("dark")  
 ctk.set_default_color_theme("dark-blue")
 
 
@@ -30,10 +30,10 @@ class LoginApp:
         self.login_window = ctk.CTk()
         self.login_window.geometry('600x450')
         self.login_window.title('Login to Project-LMS')
-        self.login_window.resizable(False, False)  # Disable resizing
+        self.login_window.resizable(False, False)  
 
         # Background image with a modern, sleek design
-        bg_image_path = "assets/background_image.jpg"  # You can customize this
+        bg_image_path = "assets/background_image.jpg"  # Pwede to Palitan Kayo na Bahala
         bg_image = Image.open(bg_image_path)
         self.bg_image = ctk.CTkImage(light_image=None, dark_image=bg_image, size=(1280, 720))
         bg_label = ctk.CTkLabel(self.login_window, image=self.bg_image)
@@ -94,15 +94,23 @@ class LoginApp:
         user = self.db.get_user(username, password)
 
         if user:
+            # Since user is a list, we need to extract the tuple first
+            user_tuple = user[0]  # Get the first element of the list, which is the tuple
+            self.user_id = user_tuple[0]  # Now extract the ID from the tuple
+            print(f"Login successful. User ID: {self.user_id}")  # This should now print just the ID (e.g., 1)
+
+            # Destroy the login window and initialize ToolManagementApp
             self.login_window.destroy()
-            ToolManagementApp(user, self.db)  # Pass the db instance to ToolManagementApp
+            ToolManagementApp(self.user_id, self.db)  # Pass only the user ID (just integer)
         else:
             self.error_label.configure(text="Incorrect username or password.")
+
+
 
     def create_signup_window(self):
         print("Creating signup window...")
         self.signup_window = ctk.CTk()
-        self.signup_window.geometry('500x600+200+200')  # Initial off-screen position
+        self.signup_window.geometry('500x600+200+200')  
         self.signup_window.title('Sign Up for Project-LMS')
         
         # Main frame for signup with a custom background
@@ -137,13 +145,13 @@ class LoginApp:
         # Username Entry
         self.signup_username_label = ctk.CTkLabel(signup_frame, text='Username', font=('Roboto', 14), text_color="white", bg_color="transparent")
         self.signup_username_label.grid(row=2, column=0, padx=10, pady=10, sticky="e")
-        self.signup_username_entry = ctk.CTkEntry(signup_frame, font=('Roboto', 14), width=280, placeholder_text="Enter username")
+        self.signup_username_entry = ctk.CTkEntry(signup_frame, font=('Roboto', 14), width=180, placeholder_text="Enter username")
         self.signup_username_entry.grid(row=2, column=1, pady=10, sticky="w")
 
         # Password Entry
         self.signup_password_label = ctk.CTkLabel(signup_frame, text='Password', font=('Roboto', 14), text_color="white", bg_color="transparent")
         self.signup_password_label.grid(row=3, column=0, padx=10, pady=10, sticky="e")
-        self.signup_password_entry = ctk.CTkEntry(signup_frame, show='*', font=('Roboto', 14), width=280, placeholder_text="Enter password")
+        self.signup_password_entry = ctk.CTkEntry(signup_frame, show='*', font=('Roboto', 14), width=180, placeholder_text="Enter password")
         self.signup_password_entry.grid(row=3, column=1, pady=10, sticky="w")
 
         # Confirm Password Entry
@@ -262,10 +270,12 @@ class LoginApp:
 
 
 class ToolManagementApp:
-    def __init__(self, user, db):
-        self.user = user
+    def __init__(self, user_id, db):
+        print(f"Received user_id type: {type(user_id)} and value: {user_id}")
+        self.user_id = user_id
         self.db_path = db_path
         self.db = DatabaseManager(db_path)
+        print(f"ToolManagementApp initialized with user_id: {self.user_id}")
         self.create_dashboard_window()
 
     def create_dashboard_window(self):
@@ -382,13 +392,9 @@ class ToolManagementApp:
 
     def borrow_tool(self):
         try:
-            # Fetch all tools
-            tools = self.db.get_tools()
-            print(f"Tools fetched from database: {tools}")  # Debugging
-
-            # Filter available tools
-            available_tools = [tool for tool in tools if tool[2] == 'available']
-            print(f"Available tools: {available_tools}")  # Debugging
+            # Fetch available tools
+            available_tools = self.db.fetch_tools_by_status('available')
+            print(f"Available tools: {available_tools}")
 
             if not available_tools:
                 messagebox.showwarning("No Tools Available", "There are no tools available to borrow.")
@@ -396,7 +402,7 @@ class ToolManagementApp:
 
             # Populate dropdown
             tool_names = [tool[1] for tool in available_tools]
-            print(f"Tool names in dropdown: {tool_names}")  # Debugging
+            print(f"Tool names in dropdown: {tool_names}")
 
             # Create borrowing window
             borrow_tool_window = ctk.CTkToplevel(self.window)
@@ -418,13 +424,15 @@ class ToolManagementApp:
             # Borrower Details
             borrower_label = ctk.CTkLabel(borrow_tool_frame, text="Borrower's Name", font=('Roboto', 14))
             borrower_label.grid(row=1, column=0, padx=10, pady=10, sticky="e")
-            borrower_entry = ctk.CTkEntry(borrow_tool_frame, font=('Roboto', 14), width=250, placeholder_text="Enter borrower's name")
+            borrower_entry = ctk.CTkEntry(borrow_tool_frame, font=('Roboto', 14), width=250,
+                                          placeholder_text="Enter borrower's name")
             borrower_entry.grid(row=1, column=1, pady=10)
 
             # Borrow Date
             date_label = ctk.CTkLabel(borrow_tool_frame, text="Borrow Date", font=('Roboto', 14))
             date_label.grid(row=2, column=0, padx=10, pady=10, sticky="e")
-            date_entry = ctk.CTkEntry(borrow_tool_frame, font=('Roboto', 14), width=250, placeholder_text="Enter borrow date (YYYY-MM-DD)")
+            date_entry = ctk.CTkEntry(borrow_tool_frame, font=('Roboto', 14), width=250,
+                                      placeholder_text="Enter borrow date (YYYY-MM-DD)")
             date_entry.grid(row=2, column=1, pady=10)
 
             # Borrow Button Logic
@@ -447,20 +455,25 @@ class ToolManagementApp:
 
                 # Borrow Tool
                 tool_id = next((tool[0] for tool in available_tools if tool[1] == selected_tool_name), None)
-                print(f"Borrowing tool with ID: {tool_id}")  # Debugging
+                print(f"Borrowing tool with ID: {tool_id}")
+                if tool_id is None:
+                    messagebox.showerror("Error", "Selected tool not found.")
+                    return
+
+                # Extract user_id directly as an integer
+                user_id = self.user_id  # user_id is already an integer
 
                 if tool_id:
-                    # Attempt to borrow the tool in the database
-                    success = self.db.borrow_tool(tool_id, borrower_name, borrow_date)
-                    if success:
+                    # Call DatabaseManager's borrow_tool method to insert a borrow record
+                    try:
+                        self.db.borrow_tool(tool_id, user_id, borrower_name, borrow_date)
                         messagebox.showinfo("Success", f"'{selected_tool_name}' borrowed by '{borrower_name}'.")
                         borrow_tool_window.destroy()
-                        self.update_inventory_table()
-                        self.update_pie_chart()
-                    else:
-                        messagebox.showerror("Error", "Failed to borrow tool. Please try again.")
-                else:
-                    messagebox.showerror("Error", "Selected tool not found.")
+                        self.update_inventory_table()  # Refresh inventory table
+                        self.update_pie_chart()  # Refresh pie chart
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Failed to borrow tool: {e}")
+                        print(f"Error while borrowing tool: {e}")
 
             # Buttons
             borrow_button = ctk.CTkButton(borrow_tool_frame, text="Borrow", command=borrow_selected_tool)
@@ -474,7 +487,8 @@ class ToolManagementApp:
             messagebox.showerror("Error", f"An error occurred: {e}")
 
 
-    
+
+
     def delete_tool(self):
         selected_item = self.inventory_table.selection()
         if not selected_item:
@@ -572,9 +586,13 @@ class ToolManagementApp:
     
     def return_tool(self):
         try:
-            # Fetch all tools
-            tools = self.db.get_tools()
-            borrowed_tools = [tool for tool in tools if tool[2] == 'borrowed']
+            # Fetch borrowed tools (tools where status is 'borrowed')
+            borrowed_tools = self.db._execute_query(
+                "SELECT tool_id, name, status FROM tools WHERE status = 'borrowed' AND user_id = ?",
+                params=(self.user_id,),  # Make sure to filter by the user_id
+                fetch=True
+            )
+            print(f"Borrowed tools: {borrowed_tools}")
 
             if not borrowed_tools:
                 messagebox.showwarning("No Borrowed Tools", "There are no borrowed tools to return.")
@@ -590,6 +608,11 @@ class ToolManagementApp:
             if tool_name and tool_name in tool_names:
                 tool_id = borrowed_tools[tool_names.index(tool_name)][0]
                 self.db.return_tool(tool_id)
+                # Update the tool's status to 'available' upon return
+                self.db._execute_query(
+                    "UPDATE tools SET status = 'available' WHERE tool_id = ?",
+                    params=(tool_id,)
+                )
                 messagebox.showinfo("Tool Returned", f"'{tool_name}' has been returned.")
                 self.update_inventory_table()  # Update inventory display
                 self.update_pie_chart()  # Update pie chart
@@ -597,6 +620,7 @@ class ToolManagementApp:
                 messagebox.showerror("Invalid Tool", "The selected tool is not valid for return.")
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred while returning the tool: {e}")
+
 
     def search_tool(self):
         tool_name = simpledialog.askstring("Search Tool", "Enter the name of the tool you want to search:")
@@ -710,3 +734,4 @@ class ToolManagementApp:
 if __name__ == '__main__':
     db_path = './db/inventory.db'
     LoginApp(db_path)
+
