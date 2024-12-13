@@ -56,13 +56,13 @@ The motivation stems from:
 ### Week 1: Development Timeline
 | Day  | Task                          | Details                                                                 | Deliverables                     |
 |------|-------------------------------|-------------------------------------------------------------------------|----------------------------------|
-| 1  - [x]   | Project Setup                 | Define the database schema, initialize environment.                    | `inventory.db` with schema      |
-| 2  - [x]    | Backend Development           | Implement CRUD operations for tool management.                         | Functional backend               |
-| 3  - [x]    | Basic Interface               | Create GUI layout and implement basic forms (e.g., add tool).          | GUI for tool addition            |
-| 4  - [x]    | Borrow/Return Features        | Add borrow/return logic and integrate into the database.               | Borrow/return functionality      |
-| 5  - [x]    | Search and Reporting          | Search tools, generate basic reports (e.g., overdue tools).            | Search and reporting features    |
-| 6  - [x]    | Testing and Debugging         | Comprehensive testing, bug fixes, and sample data validation.          | Stable system                    |
-| 7  - [x]    | Documentation and Final Touches | Prepare user manual, project report, and final presentation.           | Complete project documentation   |
+| 1 :heavy_check_mark:    | Project Setup                 | Define the database schema, initialize environment.                    | `inventory.db` with schema      |
+| 2 :heavy_check_mark:    | Backend Development           | Implement CRUD operations for tool management.                         | Functional backend               |
+| 3 :heavy_check_mark:    | Basic Interface               | Create GUI layout and implement basic forms (e.g., add tool).          | GUI for tool addition            |
+| 4 :heavy_check_mark:    | Borrow/Return Features        | Add borrow/return logic and integrate into the database.               | Borrow/return functionality      |
+| 5 :heavy_check_mark:    | Search and Reporting          | Search tools, generate basic reports (e.g., overdue tools).            | Search and reporting features    |
+| 6 :heavy_check_mark:    | Testing and Debugging         | Comprehensive testing, bug fixes, and sample data validation.          | Stable system                    |
+| 7 :heavy_check_mark:    | Documentation and Final Touches | Prepare user manual, project report, and final presentation.           | Complete project documentation   |
 
 ---
 
