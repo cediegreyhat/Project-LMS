@@ -69,11 +69,13 @@ The motivation stems from:
 ## **Project Structure**
 ```plaintext
 /main
-  ├── main.py          # Main backend logic
+  ├── cli.py          # CLI
   ├── database.py      # Database interactions and CRUD operations
-  ├── gui.py           # Frontend GUI
+  ├── gui.py           # Main App GUI
 /db
   └── inventory.db     # SQLite database file
+  └── users.db         # Account Database
+   
 
 /assets                # Miscellaneous
 
@@ -97,12 +99,12 @@ cd Project-LMS
 ```
 Install required Python libraries:
 ```
-pip install pandas
+pip install -r requirements.txt
 ```
 
 Run the project:
 
-    python3 main/main.py
+    python3 gui.py
 
 ## **Technology Stack**
 
