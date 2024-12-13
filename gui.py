@@ -277,7 +277,6 @@ class ToolManagementApp:
         # Sidebar
         sidebar = ctk.CTkFrame(self.window, width=250, fg_color="#2b2b2b", corner_radius=0)
         sidebar.pack(side="left", fill="y", padx=10, pady=10)
-        
 
         # Profile Section
         profile_image_path = "assets/user.png"
@@ -286,7 +285,7 @@ class ToolManagementApp:
 
         profile_label = ctk.CTkLabel(sidebar, image=self.profile_image_ctk, text="")
         profile_label.pack(pady=(30, 20))
-        
+
         # Sidebar Buttons
         self.borrow_button = ctk.CTkButton(sidebar, text="Borrow Tool", command=self.borrow_tool)
         self.borrow_button.pack(pady=10, padx=20, fill="x")
@@ -314,12 +313,12 @@ class ToolManagementApp:
         inventory_label = ctk.CTkLabel(dashboard_frame, text="Inventory Overview", font=("Roboto", 20))
         inventory_label.pack(pady=(20, 10))
 
-        self.inventory_table = ttk.Treeview(dashboard_frame, columns=("ID", "Name", "Category", "Condition", "Quantity", "Status"), show="headings")  # Added Status column
+        self.inventory_table = ttk.Treeview(dashboard_frame, columns=("ID", "Name", "Category", "Condition", "Quantity", "Status"), show="headings")
         self.inventory_table.pack(pady=10, padx=20, fill="both", expand=True)
 
         for col in self.inventory_table["columns"]:
-            self.inventory_table.heading(col, text=col)
-            self.inventory_table.column(col, width=150)  # Adjust width for better visibility
+            self.inventory_table.heading(col, text=col, command=lambda col=col: self.sort_inventory(col))  # Added sorting feature
+            self.inventory_table.column(col, width=150)
 
         self.update_inventory_table()
 
@@ -343,9 +342,18 @@ class ToolManagementApp:
         tools = self.db.fetch_all_tools()
         for tool in tools:
             borrowed_status = "Borrowed" if tool[2] == 'borrowed' else "Available"
-            self.inventory_table.insert("", "end", values=(tool[0], tool[1], tool[2], tool[3], tool[4], borrowed_status))  # Add borrowed status column
+            self.inventory_table.insert("", "end", values=(tool[0], tool[1], tool[2], tool[3], tool[4], borrowed_status))
 
-        # Update the pie chart after the inventory table is updated
+        self.update_pie_chart()
+
+    def sort_inventory(self, col):
+        """ Sort the inventory table by a column """
+        items = [(self.inventory_table.item(item)["values"], item) for item in self.inventory_table.get_children()]
+        items.sort(key=lambda x: x[0][self.inventory_table["columns"].index(col)])
+
+        for index, (values, item) in enumerate(items):
+            self.inventory_table.item(item, values=values)
+
         self.update_pie_chart()
 
     def update_pie_chart(self):
@@ -469,53 +477,98 @@ class ToolManagementApp:
     
     def delete_tool(self):
         selected_item = self.inventory_table.selection()
-        
         if not selected_item:
             messagebox.showwarning("No Tool Selected", "Please select a tool to delete.")
             return
-        
-        # Get the tool name from the selected row
-        selected_tool = self.inventory_table.item(selected_item, 'values')
-        tool_id = selected_tool[0]  # Assuming 'ID' is the first column in the treeview
 
-        # Confirm deletion
+        selected_tool = self.inventory_table.item(selected_item, 'values')
+        tool_id = selected_tool[0]
+
         confirm = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete the tool '{selected_tool[1]}'?")
-        
         if confirm:
-            self.db.delete_tool(tool_id)  # Delete the tool from the database
+            self.db.delete_tool(tool_id)
             messagebox.showinfo("Tool Deleted", f"'{selected_tool[1]}' has been deleted from the inventory.")
-            self.update_inventory_table()  # Update the table after deletion
-            self.update_pie_chart()  # Update the pie chart
+            self.update_inventory_table()
+            self.update_pie_chart()
             
     def view_tools(self):
         try:
-            # Ask user if they want to view all tools or filter by condition
-            response = simpledialog.askstring(
-                "View Tools",
-                "Do you want to view all tools or filter by condition? Type 'all' for all tools or 'filter' to filter by condition."
-            )
-            
-            if response and response.lower() == 'filter':
-                # Display available conditions for filtering
-                filter_condition = simpledialog.askstring(
-                    "Filter Condition", "Enter the condition to filter by (e.g., 'good', 'damaged'):"
-                )
-                if filter_condition:
-                    tools = self.db.fetch_tools_by_condition(filter_condition)
-                    if not tools:
-                        messagebox.showinfo("No Tools Found", f"No tools found with condition '{filter_condition}'.")
-                    else:
-                        self.update_inventory_table(tools)
-                        messagebox.showinfo("Filtered Tools", f"Tools with condition '{filter_condition}' displayed.")
-            elif response and response.lower() == 'all':
-                # View all tools in the inventory
-                self.update_inventory_table()
-                messagebox.showinfo("View Tools", "All tools have been displayed.")
-            else:
-                messagebox.showwarning("Invalid Input", "Please enter 'all' or 'filter' to proceed.")
+            # Create a new window for viewing tools
+            view_window = ctk.CTkToplevel(self.window)
+            view_window.geometry("600x500")
+            view_window.title("View Tools")
+
+            # Make the window always stay on top
+            view_window.attributes("-topmost", True)
+
+            # Title Label
+            title_label = ctk.CTkLabel(view_window, text="View Tools", font=("Roboto", 20))
+            title_label.pack(pady=10)
+
+            # Filter Options
+            filter_frame = ctk.CTkFrame(view_window)
+            filter_frame.pack(pady=20)
+
+            filter_label = ctk.CTkLabel(filter_frame, text="Filter by Condition:", font=("Roboto", 14))
+            filter_label.grid(row=0, column=0, padx=10)
+
+            filter_entry = ctk.CTkEntry(filter_frame, font=("Roboto", 14), width=200, placeholder_text="Enter condition (e.g. 'good')")
+            filter_entry.grid(row=0, column=1, pady=10)
+
+            # Filter Button
+            filter_button = ctk.CTkButton(view_window, text="Filter", font=("Roboto", 14), command=lambda: self.filter_tools(filter_entry, view_window))
+            filter_button.pack(pady=10)
+
+            # View All Tools Button
+            view_all_button = ctk.CTkButton(view_window, text="View All Tools", font=("Roboto", 14), command=lambda: self.view_all_tools(view_window))
+            view_all_button.pack(pady=10)
+
+            # Tools Display Area (Listbox or Treeview)
+            self.tools_listbox = ttk.Treeview(view_window, columns=("ID", "Name", "Category", "Condition", "Quantity", "Status"), show="headings")
+            self.tools_listbox.pack(pady=10, padx=20, fill="both", expand=True)
+
+            for col in self.tools_listbox["columns"]:
+                self.tools_listbox.heading(col, text=col)
+
+            # Load all tools initially
+            self.update_tools_list()
+
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred while viewing tools: {e}")
-    
+
+    def filter_tools(self, filter_entry, view_window):
+        filter_condition = filter_entry.get()
+        if not filter_condition:
+            messagebox.showwarning("Invalid Input", "Please enter a condition to filter by.")
+            return
+
+        # Fetch filtered tools based on the entered condition
+        tools = self.db.fetch_tools_by_condition(filter_condition)
+        if not tools:
+            messagebox.showinfo("No Tools Found", f"No tools found with condition '{filter_condition}'.")
+        else:
+            self.update_tools_list(tools)
+            messagebox.showinfo("Filtered Tools", f"Tools with condition '{filter_condition}' displayed.")
+
+    def view_all_tools(self, view_window):
+        # Fetch all tools and update the list
+        self.update_tools_list()
+        messagebox.showinfo("View Tools", "All tools have been displayed.")
+
+    def update_tools_list(self, tools=None):
+        # Clear existing tools in the listbox
+        for item in self.tools_listbox.get_children():
+            self.tools_listbox.delete(item)
+
+        if tools is None:
+            tools = self.db.fetch_all_tools()
+
+        # Insert the tools into the listbox
+        for tool in tools:
+            borrowed_status = "Borrowed" if tool[2] == 'borrowed' else "Available"
+            self.tools_listbox.insert("", "end", values=(tool[0], tool[1], tool[2], tool[3], tool[4], borrowed_status))
+
+        
     
     def return_tool(self):
         try:
