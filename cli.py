@@ -1,6 +1,19 @@
 from database import DatabaseManager
-from colorama import Fore, Style
+from colorama import Fore, Style, init
 import traceback
+
+# Initialize colorama
+init(autoreset=True)
+
+# ASCII Art Banner
+def print_banner():
+    banner = '''
+     ____  ____   __     __  ____  ___  ____      __    _  _  ____ 
+    (  _ \(  _ \ /  \  _(  )(  __)/ __)(_  _)___ (  )  ( \/ )/ ___)
+     ) __/ )   /(  O )/ \) \ ) _)( (__   )( (___)/ (_/\/ \/ \\___ \
+    (__)  (__\_) \__/ \____/(____)\___) (__)     \____/\_)(_/(____/
+    '''
+    print(Fore.YELLOW + banner)
 
 def main_menu():
     menu_options = [
@@ -17,7 +30,7 @@ def main_menu():
     ]
     print("\n=== Tool Management System ===")
     for option in menu_options:
-        print(option)
+        print(Fore.CYAN + option)
 
 def get_valid_int(prompt, allow_blank=False):
     while True:
@@ -26,14 +39,14 @@ def get_valid_int(prompt, allow_blank=False):
             return None
         if value.isdigit():
             return int(value)
-        print("Invalid input. Please enter a valid integer.")
+        print(Fore.RED + "Invalid input. Please enter a valid integer.")
 
 def get_valid_str(prompt, allow_blank=False):
     while True:
         value = input(prompt).strip()
         if allow_blank or value:
             return value
-        print("Invalid input. Please enter a non-empty string.")
+        print(Fore.RED + "Invalid input. Please enter a non-empty string.")
 
 def handle_add_tool(db):
     try:
@@ -41,11 +54,11 @@ def handle_add_tool(db):
         category = get_valid_str("Enter tool category: ")
         condition = get_valid_str("Enter tool condition (Good/Fair/Poor): ").capitalize()
         while condition not in ["Good", "Fair", "Poor"]:
-            print("Invalid condition. Please enter 'Good', 'Fair', or 'Poor'.")
+            print(Fore.RED + "Invalid condition. Please enter 'Good', 'Fair', or 'Poor'.")
             condition = get_valid_str("Enter tool condition (Good/Fair/Poor): ").capitalize()
         quantity = get_valid_int("Enter quantity: ")
         location = get_valid_str("Enter location: ")
-        db.insert_tool(name, category, condition, quantity, location)
+        db.add_tool(name, category, condition, quantity, location)
         print(Fore.GREEN + f"Tool '{name}' added successfully!" + Style.RESET_ALL)
     except ValueError as e:
         print(Fore.RED + str(e) + Style.RESET_ALL)
@@ -56,10 +69,10 @@ def handle_view_tools(db):
     try:
         tools = db.fetch_all_tools()
         if not tools:
-            print("No tools found in the inventory.")
+            print(Fore.YELLOW + "No tools found in the inventory.")
         else:
             for tool in tools:
-                print(f"Tool ID: {tool[0]}, Name: {tool[1]}, Category: {tool[2]}, Condition: {tool[3]}, Quantity: {tool[4]}, Location: {tool[5]}")
+                print(Fore.CYAN + f"Tool ID: {tool[0]}, Name: {tool[1]}, Category: {tool[2]}, Condition: {tool[3]}, Quantity: {tool[4]}, Location: {tool[5]}")
     except Exception as e:
         print(Fore.RED + f"Error fetching tools: {e}" + Style.RESET_ALL)
 
@@ -76,11 +89,8 @@ def handle_update_tool(db):
         }
         # Remove invalid updates
         updates = {k: v for k, v in updates.items() if v}
-        if updates:
-            db.update_tool(tool_id, **updates)
-            print(Fore.GREEN + "Tool updated successfully!" + Style.RESET_ALL)
-        else:
-            print("No valid updates provided.")
+        db.update_tool(tool_id, **updates)
+        print(Fore.GREEN + "Tool updated successfully!" + Style.RESET_ALL)
     except Exception as e:
         print(Fore.RED + f"Error updating tool: {e}" + Style.RESET_ALL)
 
@@ -94,16 +104,16 @@ def handle_delete_tool(db):
 
 def handle_borrow_tool(db):
     try:
-        borrower_name = get_valid_str("Enter borrower name: ")
+        user_id = get_valid_int("Enter User ID: ")
         tool_id = get_valid_int("Enter Tool ID to borrow: ")
-        borrow_date = get_valid_str("Enter borrow date (YYYY-MM-DD): ")
-        db.borrow_tool(tool_id, borrower_name, borrow_date)
+        db.borrow_tool(tool_id, user_id, str(datetime.now()))
         print(Fore.GREEN + f"Tool {tool_id} borrowed successfully!" + Style.RESET_ALL)
     except Exception as e:
         print(Fore.RED + f"Error borrowing tool: {e}" + Style.RESET_ALL)
 
 def handle_return_tool(db):
     try:
+        user_id = get_valid_int("Enter User ID: ")
         tool_id = get_valid_int("Enter Tool ID to return: ")
         db.return_tool(tool_id)
         print(Fore.GREEN + f"Tool {tool_id} returned successfully!" + Style.RESET_ALL)
@@ -115,33 +125,32 @@ def handle_search_tools(db):
         keyword = get_valid_str("Enter search keyword (tool name or category): ")
         results = db.search_tool(keyword)
         if not results:
-            print("No tools found matching the search criteria.")
+            print(Fore.YELLOW + "No tools found matching the search criteria.")
         else:
-            print("\nSearch Results:")
-            print("ID\tName\tCategory\tCondition\tQuantity\tLocation")
+            print(Fore.CYAN + "\nSearch Results:")
             for tool in results:
-                print(f"{tool[0]}\t{tool[1]}\t{tool[2]}\t{tool[3]}\t{tool[4]}\t{tool[5]}")
+                print(Fore.CYAN + f"{tool[0]}\t{tool[1]}\t{tool[2]}\t{tool[3]}\t{tool[4]}\t{tool[5]}")
     except Exception as e:
         print(Fore.RED + f"Error searching for tools: {e}" + Style.RESET_ALL)
 
 def handle_clear_data(db):
-    confirmation = input("Are you sure you want to clear all data? Type 'YES' to confirm: ")
+    confirmation = input(Fore.RED + "Are you sure you want to clear all data? Type 'YES' to confirm: ")
     if confirmation.upper() == "YES":
-        db._execute_query("DELETE FROM tools")
-        print("All tools data cleared successfully.")
+        db.clear_tables()
+        print(Fore.GREEN + "All data cleared successfully." + Style.RESET_ALL)
     else:
-        print("Operation cancelled.")
+        print(Fore.YELLOW + "Operation cancelled.")
 
 def handle_execute_sql(db):
     try:
-        sql_command = input("Enter SQL command to execute: ")
+        sql_command = input(Fore.YELLOW + "Enter SQL command to execute: ")
         db._execute_query(sql_command)
         print(Fore.GREEN + "SQL command executed successfully!" + Style.RESET_ALL)
     except Exception as e:
         print(Fore.RED + f"Error executing SQL command: {e}" + Style.RESET_ALL)
 
 def account_login(db):
-    print("=== Login ===")
+    print(Fore.YELLOW + "=== Login ===")
     username = get_valid_str("Enter username: ")
     password = get_valid_str("Enter password: ")
     
@@ -157,12 +166,14 @@ def account_login(db):
 if __name__ == "__main__":
     db = DatabaseManager('db/inventory.db')
     
+    print_banner()  # Display the welcoming banner
+    
     while not account_login(db):
         pass  # Keep prompting until successful login
     
     while True:
         main_menu()
-        choice = input("Enter your choice: ").strip()
+        choice = input(Fore.YELLOW + "Enter your choice: ").strip()
         if choice == "1":
             handle_add_tool(db)
         elif choice == "2":
@@ -182,7 +193,7 @@ if __name__ == "__main__":
         elif choice == "9":
             handle_execute_sql(db)
         elif choice == "10":
-            print("Exiting the system. Goodbye!")
+            print(Fore.GREEN + "Thank you for using the Inventory Management System. Goodbye!" + Style.RESET_ALL)
             break
         else:
-            print("Invalid choice. Please try again.")
+            print(Fore.RED + "Invalid choice. Please try again.")
