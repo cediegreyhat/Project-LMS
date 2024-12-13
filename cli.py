@@ -1,21 +1,39 @@
+import os
+import datetime
 from database import DatabaseManager
 from colorama import Fore, Style, init
 import traceback
 
-# Initialize colorama
 init(autoreset=True)
 
-# ASCII Art Banner
+# New ASCII Art Banner for Project-LMS
 def print_banner():
     banner = '''
-     ____  ____   __     __  ____  ___  ____      __    _  _  ____ 
-    (  _ \(  _ \ /  \  _(  )(  __)/ __)(_  _)___ (  )  ( \/ )/ ___)
-     ) __/ )   /(  O )/ \) \ ) _)( (__   )( (___)/ (_/\/ \/ \\___ \
-    (__)  (__\_) \__/ \____/(____)\___) (__)     \____/\_)(_/(____/
-    '''
-    print(Fore.YELLOW + banner)
+ _____                                                                     _____ 
+( ___ )                                                                   ( ___ )
+ |   |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|   | 
+ |   | 8""""8                                         8     8""8""8 8""""8 |   | 
+ |   | 8    8 eeeee  eeeee    e  eeee eeee eeeee      8     8  8  8 8      |   | 
+ |   | 8eeee8 8   8  8  88    8  8    8  8   8        8e    8e 8  8 8eeeee |   | 
+ |   | 88     8eee8e 8   8    8e 8eee 8e     8e  eeee 88    88 8  8     88 |   | 
+ |   | 88     88   8 8   8 e  88 88   88     88       88    88 8  8 e   88 |   | 
+ |   | 88     88   8 8eee8 8ee88 88ee 88e8   88       88eee 88 8  8 8eee88 |   | 
+ |___|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|___| 
+(_____)                                                                   (_____)
+'''
+    print(Fore.CYAN + banner + Style.RESET_ALL)
+
+# Function to display the tools in a formatted table
+def display_inventory(inventory):
+    print("\nInventory List:")
+    print(f"{'ID':<5}{'Name':<20}{'Category':<15}{'Condition':<10}{'Quantity':<10}{'Location':<20}{'Status':<15}{'Owner':<10}{'Date':<10}")
+    print("-" * 90)
+    for item in inventory:
+        print(f"{item[0]:<5}{item[1]:<20}{item[2]:<15}{item[3]:<10}{item[4]:<10}{item[5]:<20}{item[6]:<15}{item[7]:<10}{item[8]:<10}")
+
 
 def main_menu():
+    print(Fore.GREEN + "\n=== Project-LMS[CLI] ===" + Style.RESET_ALL)
     menu_options = [
         "1. Add Tool",
         "2. View All Tools",
@@ -28,9 +46,8 @@ def main_menu():
         "9. Execute SQL Command (Admin Only)",
         "10. Exit"
     ]
-    print("\n=== Tool Management System ===")
     for option in menu_options:
-        print(Fore.CYAN + option)
+        print(Fore.YELLOW + f"{option}" + Style.RESET_ALL)
 
 def get_valid_int(prompt, allow_blank=False):
     while True:
@@ -47,6 +64,8 @@ def get_valid_str(prompt, allow_blank=False):
         if allow_blank or value:
             return value
         print(Fore.RED + "Invalid input. Please enter a non-empty string.")
+
+# Inventory management functions (Add, View, Update, Delete, etc.)
 
 def handle_add_tool(db):
     try:
@@ -72,9 +91,17 @@ def handle_view_tools(db):
             print(Fore.YELLOW + "No tools found in the inventory.")
         else:
             for tool in tools:
-                print(Fore.CYAN + f"Tool ID: {tool[0]}, Name: {tool[1]}, Category: {tool[2]}, Condition: {tool[3]}, Quantity: {tool[4]}, Location: {tool[5]}")
+                tool_id = tool[0] if tool[0] is not None else 'N/A'
+                name = tool[1] if tool[1] is not None else 'N/A'
+                category = tool[2] if tool[2] is not None else 'N/A'
+                condition = tool[3] if tool[3] is not None else 'N/A'
+                quantity = tool[4] if tool[4] is not None else 'N/A'
+                location = tool[5] if tool[5] is not None else 'N/A'
+
+                print(Fore.CYAN + f"Tool ID: {tool_id}, Name: {name}, Category: {category}, Condition: {condition}, Quantity: {quantity}, Location: {location}")
     except Exception as e:
         print(Fore.RED + f"Error fetching tools: {e}" + Style.RESET_ALL)
+
 
 def handle_update_tool(db):
     try:
@@ -166,13 +193,13 @@ def account_login(db):
 if __name__ == "__main__":
     db = DatabaseManager('db/inventory.db')
     
-    print_banner()  # Display the welcoming banner
+    print_banner()  # Display banner as soon as the program starts
     
     while not account_login(db):
-        pass  # Keep prompting until successful login
+        pass  # Retry login if login fails
     
     while True:
-        main_menu()
+        main_menu()  # Display main menu
         choice = input(Fore.YELLOW + "Enter your choice: ").strip()
         if choice == "1":
             handle_add_tool(db)
